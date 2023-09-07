@@ -12,11 +12,16 @@ proc decodeClientMessage(client: AsyncSocket): Future[NCClientMessage] {. async 
     echo("decodeClientMessage")
     let dataLenStr = await(client.recv(4))
     var dataLen = 0
+    # Convert binary data into integer value
     bigEndian32(unsafeAddr(dataLen), unsafeAddr(dataLenStr[0]))
 
     let data = await(client.recv(dataLen))
 
     # TODO: decrypt data, decompress data
+
+    # https://cheatfate.github.io/nimcrypto/nimcrypto/hmac.html
+    # nimble install nimcrypto
+    # sha256.hmac(stringHmacKey, stringToHmac)
 
     return NCClientMessage()
 
