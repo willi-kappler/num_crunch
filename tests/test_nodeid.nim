@@ -1,5 +1,5 @@
 
-import ../num_crunch/common
+import num_crunch/common
 
 block:
     # Test for not equal
