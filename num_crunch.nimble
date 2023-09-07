@@ -7,3 +7,8 @@ srcDir        = "src"
 
 # Dependencies
 requires "nim >= 1.6.14"
+
+# Tasks
+
+task testAll, "Run all test cases in tests/":
+    exec "testament --print --verbose c /"
