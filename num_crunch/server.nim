@@ -3,9 +3,22 @@
 import std/[asyncnet, asyncdispatch]
 from std/strformat import fmt
 from std/nativesockets import Port
+from std/endians import bigEndian32
 
 # Local imports
 import common
+
+proc decodeClientMessage(client: AsyncSocket): Future[NCClientMessage] {. async .}=
+    echo("decodeClientMessage")
+    let dataLenStr = await(client.recv(4))
+    var dataLen = 0
+    bigEndian32(unsafeAddr(dataLen), unsafeAddr(dataLenStr[0]))
+
+    let data = await(client.recv(dataLen))
+
+    # TODO: decrypt data, decompress data
+
+    return NCClientMessage()
 
 type
     NCServer* = object
