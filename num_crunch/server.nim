@@ -64,11 +64,13 @@ proc serve(ncServer: NCServer) {. async .} =
         if srvFuture.finished() and not srvFuture.failed():
             let client = srvFuture.read()
             let clientFuture = ncServer.handleClient(client)
-            asyncCheck(clientFuture)
-            await(clientFuture)
+
             # Create a new fresh future here since
             # the old one is already done
             srvFuture = server.accept()
+
+            asyncCheck(clientFuture)
+            await(clientFuture)
 
         if hbFuture.finished() and not hbFuture.failed():
             # Create a new fresh future here since
