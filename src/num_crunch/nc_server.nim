@@ -3,6 +3,7 @@
 import std/[asyncnet, asyncdispatch]
 from std/strformat import fmt
 from std/nativesockets import Port
+from std/random import randomize
 
 # External imports
 from chacha20 import Key
@@ -36,7 +37,7 @@ proc handleClient(ncServer: NCServer, client: AsyncSocket) {. async .} =
     let (clientAddr, clientPort) = client.getPeerAddr()
     echo(fmt("Connection from: {clientAddr}, port: {clientPort.uint16}"))
 
-    let nodeMessage = ncDecodeNodeMessage(client, ncServer.key)
+    let nodeMessage = ncReceiveNodeMessage(client, ncServer.key)
     # TODO: write code to handle clients
 
 proc serve(ncServer: NCServer) {. async .} =
@@ -74,6 +75,9 @@ proc serve(ncServer: NCServer) {. async .} =
 proc run*(config: NCConfiguration) =
     echo("Starting NCServer with port: ", config.serverPort.uint16)
 
+    # Initiate the random number genertator
+    randomize()
+
     var ncServer = NCServer()
 
     ncServer.serverPort = config.serverPort
@@ -89,3 +93,9 @@ proc run*(config: NCConfiguration) =
     let serverFuture = ncServer.serve()
     asyncCheck(serverFuture)
     waitFor(serverFuture)
+
+proc run*(fileName: string) =
+    echo("Load configration from file: ", fileName)
+
+    let config = ncLoadConfig(fileName)
+    run(config)
