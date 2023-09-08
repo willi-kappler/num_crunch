@@ -5,7 +5,8 @@ from std/strformat import fmt
 from std/nativesockets import Port
 
 # Local imports
-import common
+import nc_common
+import nc_config
 
 type
     NCNode* = object
@@ -16,7 +17,7 @@ type
         nodeId: NCNodeID
 
 proc run*(server: var NCNode, config: NCConfiguration) =
-    echo(fmt("Starting NCNode, connecting to '{config.serverAddr}', using port: {config.serverPort}"))
+    echo(fmt("Starting NCNode, connecting to '{config.serverAddr}', using port: {config.serverPort.uint16}"))
 
     server.serverAddr = config.serverAddr
     server.serverPort = config.serverPort

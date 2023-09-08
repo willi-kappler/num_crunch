@@ -3,59 +3,18 @@
 import std/[asyncnet, asyncdispatch]
 from std/strformat import fmt
 from std/nativesockets import Port
-from std/endians import bigEndian32
 
 # External imports
-from chacha20 import chacha20
-from supersnappy import uncompress
-from flatty import fromFlatty
+from chacha20 import Key
 
 # Local imports
-import common
-
-proc decodeNodeMessage(client: AsyncSocket, keyStr: string): Future[NCNodeMessage] {. async .} =
-    echo("decodeNodeMessage")
-
-    const
-        nonceLength = 12
-        keyLength = 32
-
-    # Read the length of the whole data set (4 bytes)
-    let dataLenStr = await(client.recv(4))
-    var dataLen = 0
-    # Convert binary data into integer value
-    bigEndian32(unsafeAddr(dataLen), unsafeAddr(dataLenStr[0]))
-
-    # Read the nonce for decrypting with chacha20 (12 bytes)
-    let nonceStr = await(client.recv(nonceLength))
-    # Cast nonce from string to array[12, byte] for chacha20 (12 bytes)
-    let nonce = cast[ptr(array[nonceLength, byte])](unsafeAddr(nonceStr[0]))
-
-    # Read rest of the data (encrypted)
-    let dataEncrypted = await(client.recv(dataLen))
-
-    # Cast key from string to array[32, byte] for chacha20 (32 bytes)
-    assert(keyStr.len() == keyLength)
-    let key = cast[ptr(array[keyLength, byte])](unsafeAddr(keyStr[0]))
-
-    # Decrypt data using chacha20
-    # https://git.sr.ht/~ehmry/chacha20
-    let dataDecrypted = chacha20(dataEncrypted, key[], nonce[])
-
-    # Decompress data using supersnappy
-    # https://github.com/guzba/supersnappy
-    let dataUncompressed = uncompress(dataDecrypted)
-
-    # Deserialize data using flatty
-    # https://github.com/treeform/flatty
-    let nodeMessage: NCNodeMessage = fromFlatty(dataUncompressed, NCNodeMessage)
-
-    return nodeMessage
+import nc_common
+import nc_config
 
 type
     NCServer* = object
         serverPort: Port
-        key: string
+        key: Key
         # In seconds
         heartbeatTimeout: uint16
         nodes: seq[NCNodeID]
@@ -75,9 +34,9 @@ proc checkHeartbeat(ncServer: NCServer) {. async .} =
 proc handleClient(ncServer: NCServer, client: AsyncSocket) {. async .} =
     echo("NCServer.handleClient()")
     let (clientAddr, clientPort) = client.getPeerAddr()
-    echo(fmt("Connection from: {clientAddr}, port: {clientPort}"))
+    echo(fmt("Connection from: {clientAddr}, port: {clientPort.uint16}"))
 
-    let nodeMessage = decodeNodeMessage(client, ncServer.key)
+    let nodeMessage = ncDecodeNodeMessage(client, ncServer.key)
     # TODO: write code to handle clients
 
 proc serve(ncServer: NCServer) {. async .} =
@@ -112,11 +71,19 @@ proc serve(ncServer: NCServer) {. async .} =
             # the old one is already done
             hbFuture = ncServer.checkHeartbeat()
 
-proc run*(ncServer: var NCServer, config: NCConfiguration) =
-    echo("Starting NCServer with port: ", config.serverPort)
+proc run*(config: NCConfiguration) =
+    echo("Starting NCServer with port: ", config.serverPort.uint16)
+
+    var ncServer = NCServer()
 
     ncServer.serverPort = config.serverPort
-    ncServer.key = config.secretKey
+
+    # Cast key from string to array[32, byte] for chacha20 (32 bytes)
+    let keyStr = config.secretKey
+    assert(keyStr.len() == 32)
+    let key = cast[ptr(Key)](unsafeAddr(keyStr[0]))
+
+    ncServer.key = key[]
     ncServer.heartbeatTimeout = config.heartbeatTimeout
 
     let serverFuture = ncServer.serve()
