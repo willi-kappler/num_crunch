@@ -5,29 +5,57 @@ from std/strformat import fmt
 from std/nativesockets import Port
 from std/endians import bigEndian32
 
+# External imports
+from chacha20 import chacha20
+from supersnappy import uncompress
+from flatty import fromFlatty
+
 # Local imports
 import common
 
-proc decodeClientMessage(client: AsyncSocket): Future[NCClientMessage] {. async .}=
-    echo("decodeClientMessage")
+proc decodeNodeMessage(client: AsyncSocket, keyStr: string): Future[NCNodeMessage] {. async .} =
+    echo("decodeNodeMessage")
+
+    const
+        nonceLength = 12
+        keyLength = 32
+
+    # Read the length of the whole data set (4 bytes)
     let dataLenStr = await(client.recv(4))
     var dataLen = 0
     # Convert binary data into integer value
     bigEndian32(unsafeAddr(dataLen), unsafeAddr(dataLenStr[0]))
 
-    let data = await(client.recv(dataLen))
+    # Read the nonce for decrypting with chacha20 (12 bytes)
+    let nonceStr = await(client.recv(nonceLength))
+    # Cast nonce from string to array[12, byte] for chacha20 (12 bytes)
+    let nonce = cast[ptr(array[nonceLength, byte])](unsafeAddr(nonceStr[0]))
 
-    # TODO: decrypt data, decompress data
+    # Read rest of the data (encrypted)
+    let dataEncrypted = await(client.recv(dataLen))
 
-    # https://cheatfate.github.io/nimcrypto/nimcrypto/hmac.html
-    # nimble install nimcrypto
-    # sha256.hmac(stringHmacKey, stringToHmac)
+    # Cast key from string to array[32, byte] for chacha20 (32 bytes)
+    assert(keyStr.len() == keyLength)
+    let key = cast[ptr(array[keyLength, byte])](unsafeAddr(keyStr[0]))
 
-    return NCClientMessage()
+    # Decrypt data using chacha20
+    # https://git.sr.ht/~ehmry/chacha20
+    let dataDecrypted = chacha20(dataEncrypted, key[], nonce[])
+
+    # Decompress data using supersnappy
+    # https://github.com/guzba/supersnappy
+    let dataUncompressed = uncompress(dataDecrypted)
+
+    # Deserialize data using flatty
+    # https://github.com/treeform/flatty
+    let nodeMessage: NCNodeMessage = fromFlatty(dataUncompressed, NCNodeMessage)
+
+    return nodeMessage
 
 type
     NCServer* = object
         serverPort: Port
+        key: string
         # In seconds
         heartbeatTimeout: uint16
         nodes: seq[NCNodeID]
@@ -48,6 +76,8 @@ proc handleClient(ncServer: NCServer, client: AsyncSocket) {. async .} =
     echo("NCServer.handleClient()")
     let (clientAddr, clientPort) = client.getPeerAddr()
     echo(fmt("Connection from: {clientAddr}, port: {clientPort}"))
+
+    let nodeMessage = decodeNodeMessage(client, ncServer.key)
     # TODO: write code to handle clients
 
 proc serve(ncServer: NCServer) {. async .} =
@@ -86,6 +116,7 @@ proc run*(ncServer: var NCServer, config: NCConfiguration) =
     echo("Starting NCServer with port: ", config.serverPort)
 
     ncServer.serverPort = config.serverPort
+    ncServer.key = config.secretKey
     ncServer.heartbeatTimeout = config.heartbeatTimeout
 
     let serverFuture = ncServer.serve()

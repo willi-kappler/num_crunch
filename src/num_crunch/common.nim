@@ -40,7 +40,7 @@ func `==`*(left, right: NCNodeID): bool =
     left.id == right.id
 
 type
-    NCClientMessage* = object
+    NCNodeMessage* = object
         kind*: string
         id*: NCNodeID
         data*: string
