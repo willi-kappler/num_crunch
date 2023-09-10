@@ -1,5 +1,5 @@
 
-import nc_common
+import private/nc_nodeid
 
 block:
     # Test for not equal

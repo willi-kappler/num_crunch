@@ -5,7 +5,8 @@ from std/strformat import fmt
 from std/nativesockets import Port
 
 # Local imports
-import nc_common
+import private/nc_message
+import private/nc_nodeid
 import nc_config
 
 type

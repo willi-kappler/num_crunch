@@ -9,7 +9,8 @@ from std/random import randomize
 from chacha20 import Key
 
 # Local imports
-import nc_common
+import private/nc_message
+import private/nc_nodeid
 import nc_config
 
 type
@@ -25,7 +26,7 @@ proc checkHeartbeat(ncServer: NCServer) {. async .} =
     echo("NCServer.checkHeartbeat()")
     # Convert from seconds to miliseconds
     # and add a small tolerance for the client nodes
-    let tolerance: uint = 100 # 100 ms tolerance
+    const tolerance: uint = 200 # 200 ms tolerance
     let timeOut = (uint(ncServer.heartbeatTimeout) * 1000) + tolerance
 
     await(sleepAsync(int(timeOut)))

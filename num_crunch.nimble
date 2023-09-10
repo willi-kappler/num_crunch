@@ -16,12 +16,13 @@ requires "chacha20 >= 0.1.0"
 task(testAll, "Run all test cases in tests/"):
     exec("testament --print --verbose c /")
 
-task(checkAll, "run 'nim check' on the main source file"):
+task(checkAll, "run 'nim check' on all source files"):
     cd("src/")
     exec("nim check nc_common.nim")
     exec("nim check nc_config.nim")
     exec("nim check nc_node.nim")
     exec("nim check nc_server.nim")
-
-
+    # Check private modules:
+    exec("nim check private/nc_message.nim")
+    exec("nim check private/nc_nodeid.nim")
 
