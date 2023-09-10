@@ -84,7 +84,7 @@ proc run*(config: NCConfiguration) =
 
     # Cast key from string to array[32, byte] for chacha20 (32 bytes)
     let keyStr = config.secretKey
-    assert(keyStr.len() == 32)
+    assert(keyStr.len() == len(Key))
     let key = cast[ptr(Key)](unsafeAddr(keyStr[0]))
 
     ncServer.key = key[]
