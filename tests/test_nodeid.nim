@@ -1,5 +1,5 @@
 
-import num_crunch/common
+import nc_common
 
 block:
     # Test for not equal
@@ -14,3 +14,4 @@ block:
     let b = NCNodeID(id: "150")
 
     assert(a == b)
+

@@ -18,4 +18,10 @@ task(testAll, "Run all test cases in tests/"):
 
 task(checkAll, "run 'nim check' on the main source file"):
     cd("src/")
-    exec("nim check num_crunch.nim")
+    exec("nim check nc_common.nim")
+    exec("nim check nc_config.nim")
+    exec("nim check nc_node.nim")
+    exec("nim check nc_server.nim")
+
+
+
