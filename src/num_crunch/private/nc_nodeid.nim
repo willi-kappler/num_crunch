@@ -13,10 +13,13 @@ type
 func `==`*(left, right: NCNodeID): bool =
     left.id == right.id
 
+func len*(id: NCNodeID): int =
+    id.id.len()
+
 proc ncNewNodeId*(): NCNodeID =
     var id: seq[char] = @[]
 
-    for i in 0..ID_LENGTH:
+    for i in 1..ID_LENGTH:
         let c = sample(ID_CHARS)
         id.add(c)
 

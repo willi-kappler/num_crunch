@@ -15,3 +15,8 @@ block:
 
     assert(a == b)
 
+block:
+    # Test new node id
+    let id = ncNewNodeId()
+    echo("New node id: ", id)
+    assert(id.len() == 32)
