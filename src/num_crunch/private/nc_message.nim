@@ -18,8 +18,8 @@ type
     NCNodeMessage* = object
         kind*: NCNodeMsgKind
         data*: string
-    NCMessageToNode = NCNodeMessage
-    NCMessageFromServer = NCNodeMessage
+    NCMessageToNode* = NCNodeMessage
+    NCMessageFromServer* = NCNodeMessage
 
 type
     NCServerMsgKind* = enum
@@ -29,11 +29,11 @@ type
         kind*: NCServerMsgKind
         id*: NCNodeID
         data*: string
-    NCMessageToServer = NCServerMessage
-    NCMessageFromNode = NCServerMessage
+    NCMessageToServer* = NCServerMessage
+    NCMessageFromNode* = NCServerMessage
 
 proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
-    echo("ncDecodeMessage")
+    echo("ncDecodeMessage()")
 
     # Decrypt data using chacha20
     # https://git.sr.ht/~ehmry/chacha20
@@ -46,7 +46,7 @@ proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
     return dataUncompressed
 
 proc ncReceiveMessage(socket: AsyncSocket, key: Key): Future[string] {. async .} =
-    echo("ncReceiveMessage")
+    echo("ncReceiveMessage()")
 
     # Read the length of the whole data set (4 bytes)
     let dataLenStr = await(socket.recv(4))
@@ -65,7 +65,7 @@ proc ncReceiveMessage(socket: AsyncSocket, key: Key): Future[string] {. async .}
     return ncDecodeMessage(dataEncrypted, key, nonce[])
 
 proc ncReceiveMessageFromNode*(nodeSocket: AsyncSocket, key: Key): Future[NCMessageFromNode] {. async .} =
-    echo("ncReceiveNodeMessage")
+    echo("ncReceiveNodeMessage()")
 
     let message = await(ncReceiveMessage(nodeSocket, key))
 
@@ -76,7 +76,7 @@ proc ncReceiveMessageFromNode*(nodeSocket: AsyncSocket, key: Key): Future[NCMess
     return nodeMessage
 
 proc ncReceiveMessageFromServer*(serverSocket: AsyncSocket, key: Key): Future[NCMessageFromServer] {. async .} =
-    echo("ncReceiveServerMessage")
+    echo("ncReceiveServerMessage()")
 
     let message = await(ncReceiveMessage(serverSocket, key))
 
@@ -87,7 +87,7 @@ proc ncReceiveMessageFromServer*(serverSocket: AsyncSocket, key: Key): Future[NC
     return serverMessage
 
 proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
-    echo("ncEncodeMessage")
+    echo("ncEncodeMessage()")
 
     # Compress data using supersnappy
     # https://github.com/guzba/supersnappy
@@ -98,7 +98,7 @@ proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
     return chacha20(dataCompressed, key, nonce)
 
 proc ncSendMessage(socket: AsyncSocket, key: Key, data: string) {. async .} =
-    echo("ncSendMessage")
+    echo("ncSendMessage()")
 
     var nonce: Nonce
 
@@ -126,7 +126,7 @@ proc ncSendMessage(socket: AsyncSocket, key: Key, data: string) {. async .} =
     await(socket.send(dataEncrypted))
 
 proc ncSendMessageToNode*(nodeSocket: AsyncSocket, key: Key, nodeMessage: NCMessageToNode) {. async .} =
-    echo("ncSendNodeMessage")
+    echo("ncSendNodeMessage()")
 
     # Serialize using Flatty
     # https://github.com/treeform/flatty
@@ -135,7 +135,7 @@ proc ncSendMessageToNode*(nodeSocket: AsyncSocket, key: Key, nodeMessage: NCMess
     await(ncSendMessage(nodeSocket, key, data))
 
 proc ncSendMessageToServer*(serverSocket: AsyncSocket, key: Key, serverMessage: NCMessageToServer) {. async .} =
-    echo("ncSendServerMessage")
+    echo("ncSendServerMessage()")
 
     # Serialize using Flatty
     # https://github.com/treeform/flatty
@@ -143,4 +143,8 @@ proc ncSendMessageToServer*(serverSocket: AsyncSocket, key: Key, serverMessage: 
 
     await(ncSendMessage(serverSocket, key, data))
 
+proc ncWelcomeMessage*(id: NCNodeID): NCMessageToNode =
+    echo("ncWelcomeMessage()")
 
+    let data = toFlatty(id)
+    NCNodeMessage(kind: NCNodeMsgKind.welcome, data: data)
