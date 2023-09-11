@@ -18,11 +18,16 @@ task(testAll, "Run all test cases in tests/"):
 
 task(checkAll, "run 'nim check' on all source files"):
     cd("src/")
+    exec("nim check num_crunch.nim")
+
+    cd("num_crunch/")
     exec("nim check nc_common.nim")
     exec("nim check nc_config.nim")
     exec("nim check nc_node.nim")
     exec("nim check nc_server.nim")
+
+    cd("private/")
     # Check private modules:
-    exec("nim check private/nc_message.nim")
-    exec("nim check private/nc_nodeid.nim")
+    exec("nim check nc_message.nim")
+    exec("nim check nc_nodeid.nim")
 

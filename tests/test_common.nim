@@ -1,7 +1,7 @@
 
 from chacha20 import Nonce, Key
 
-import private/nc_message
+import num_crunch/private/nc_message
 
 block:
     let data = "This is a secret message"

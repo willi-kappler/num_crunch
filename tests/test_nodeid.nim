@@ -1,5 +1,5 @@
 
-import private/nc_nodeid
+import num_crunch/private/nc_nodeid
 
 block:
     # Test for not equal

@@ -13,7 +13,7 @@ from std/endians import bigEndian32
 import nc_nodeid
 
 type
-    NCNodeMsgKind = enum
+    NCNodeMsgKind* = enum
         welcome, newData, quit
     NCNodeMessage* = object
         kind*: NCNodeMsgKind
@@ -22,8 +22,9 @@ type
     NCMessageFromServer = NCNodeMessage
 
 type
-    NCServerMsgKind = enum
-        registerNewNode, needData, processedData
+    NCServerMsgKind* = enum
+        # TODO: add statistics, forceQuit
+        registerNewNode, needsData, processedData, heartbeat
     NCServerMessage* = object
         kind*: NCServerMsgKind
         id*: NCNodeID
@@ -63,7 +64,7 @@ proc ncReceiveMessage(socket: AsyncSocket, key: Key): Future[string] {. async .}
 
     return ncDecodeMessage(dataEncrypted, key, nonce[])
 
-proc ncReceiveNodeMessage*(nodeSocket: AsyncSocket, key: Key): Future[NCMessageFromNode] {. async .} =
+proc ncReceiveMessageFromNode*(nodeSocket: AsyncSocket, key: Key): Future[NCMessageFromNode] {. async .} =
     echo("ncReceiveNodeMessage")
 
     let message = await(ncReceiveMessage(nodeSocket, key))
@@ -74,7 +75,7 @@ proc ncReceiveNodeMessage*(nodeSocket: AsyncSocket, key: Key): Future[NCMessageF
 
     return nodeMessage
 
-proc ncReceiveServerMessage*(serverSocket: AsyncSocket, key: Key): Future[NCMessageFromServer] {. async .} =
+proc ncReceiveMessageFromServer*(serverSocket: AsyncSocket, key: Key): Future[NCMessageFromServer] {. async .} =
     echo("ncReceiveServerMessage")
 
     let message = await(ncReceiveMessage(serverSocket, key))
@@ -124,7 +125,7 @@ proc ncSendMessage(socket: AsyncSocket, key: Key, data: string) {. async .} =
     # Send the encrypted data to socket
     await(socket.send(dataEncrypted))
 
-proc ncSendNodeMessage*(nodeSocket: AsyncSocket, key: Key, nodeMessage: NCMessageToNode) {. async .} =
+proc ncSendMessageToNode*(nodeSocket: AsyncSocket, key: Key, nodeMessage: NCMessageToNode) {. async .} =
     echo("ncSendNodeMessage")
 
     # Serialize using Flatty
@@ -133,7 +134,7 @@ proc ncSendNodeMessage*(nodeSocket: AsyncSocket, key: Key, nodeMessage: NCMessag
 
     await(ncSendMessage(nodeSocket, key, data))
 
-proc ncSendServerMessage*(serverSocket: AsyncSocket, key: Key, serverMessage: NCMessageToServer) {. async .} =
+proc ncSendMessageToServer*(serverSocket: AsyncSocket, key: Key, serverMessage: NCMessageToServer) {. async .} =
     echo("ncSendServerMessage")
 
     # Serialize using Flatty
