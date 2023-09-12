@@ -28,7 +28,7 @@ proc ncCheckNodesHeartbeat(ncServer: NCServer) {. async .} =
 
     # Convert from seconds to miliseconds
     # and add a small tolerance for the client nodes
-    const tolerance: uint = 200 # 200 ms tolerance
+    const tolerance: uint = 500 # 500 ms tolerance
     let timeOut = (uint(ncServer.heartbeatTimeout) * 1000) + tolerance
 
     await(sleepAsync(int(timeOut)))
@@ -52,11 +52,16 @@ proc ncCreateNewNodeId(ncServer: NCServer): NCNodeID =
 proc ncSendNewNodeId(ncServer: NCServer, client: AsyncSocket, newId: NCNodeID) {. async .} =
     echo("NCServer.ncSendNewNodeId()")
 
-    let message = ncWelcomeMessage(newId)
+    let data = toFlatty(newId)
+    let message = NCNodeMessage(kind: NCNodeMsgKind.welcome, data: data)
+
     await(ncSendMessageToNode(client, ncServer.key, message))
 
-proc ncValidNodeId(ncServer: NCServer, id: NCNodeID) =
+proc ncValidNodeId(ncServer: NCServer, id: NCNodeID): bool =
     echo("NCServer.ncValidNodeId(), id: ", id)
+    # TODO: check if node id is valid
+
+    return true
 
 proc ncHandleClient(ncServer: NCServer, client: AsyncSocket) {. async .} =
     echo("NCServer.ncHandleClient()")
@@ -73,15 +78,17 @@ proc ncHandleClient(ncServer: NCServer, client: AsyncSocket) {. async .} =
         let newId = ncServer.ncCreateNewNodeId()
         await(ncServer.ncSendNewNodeId(client, newId))
     of NCServerMsgKind.needsData:
-        discard
-        # asyncdispatch: hasPendingOperations(), poll(10)
-        # if ncServer.ncValidNodeId(serverMessage.id):
-        # if ncServer.dataManager.ncIsDone():
-        #
-        # else:
-        # let newData = toFlatty(ncServer.dataManader.ncGetNewData())
-        # let message = NCMessageToNode(NCNodeMsgKind.newData, newData)
-        # await(ncSendMessageToNode)
+        if ncServer.ncValidNodeId(serverMessage.id):
+            echo("Node id valid: ", serverMessage.id)
+            # asyncdispatch: hasPendingOperations(), poll(10)
+            # if ncServer.dataManager.ncIsDone():
+            #
+            # else:
+            # let newData = toFlatty(ncServer.dataManader.ncGetNewData())
+            # let message = NCMessageToNode(NCNodeMsgKind.newData, newData)
+            # await(ncSendMessageToNode)
+        else:
+            echo("Node id invalid: ", serverMessage.id)
     of NCServerMsgKind.processedData:
         discard
         # if ncServer.ncValidNodeId(serverMessage.id):

@@ -142,9 +142,3 @@ proc ncSendMessageToServer*(serverSocket: AsyncSocket, key: Key, serverMessage: 
     let data = toFlatty(serverMessage)
 
     await(ncSendMessage(serverSocket, key, data))
-
-proc ncWelcomeMessage*(id: NCNodeID): NCMessageToNode =
-    echo("ncWelcomeMessage()")
-
-    let data = toFlatty(id)
-    NCNodeMessage(kind: NCNodeMsgKind.welcome, data: data)
