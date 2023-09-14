@@ -1,6 +1,6 @@
 
 # Nim std imports
-import std/[asyncnet, asyncdispatch]
+import std/net
 from std/random import rand
 
 # External imports
@@ -24,7 +24,8 @@ type
 type
     NCServerMsgKind* = enum
         # TODO: add statistics, forceQuit
-        registerNewNode, needsData, processedData, heartbeat
+        registerNewNode, needsData, processedData, heartbeat, checkHeartbeat, getStatistics,
+        forceQuit
     NCServerMessage* = object
         kind*: NCServerMsgKind
         id*: NCNodeID
@@ -45,29 +46,29 @@ proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
 
     return dataUncompressed
 
-proc ncReceiveMessage(socket: AsyncSocket, key: Key): Future[string] {. async .} =
+proc ncReceiveMessage(socket: Socket, key: Key): string =
     echo("ncReceiveMessage()")
 
     # Read the length of the whole data set (4 bytes)
-    let dataLenStr = await(socket.recv(4))
+    let dataLenStr = socket.recv(4)
     var dataLen = 0
     # Convert binary data into integer value
     bigEndian32(unsafeAddr(dataLen), unsafeAddr(dataLenStr[0]))
 
     # Read the nonce for decrypting with chacha20 (12 bytes)
-    let nonceStr = await(socket.recv(len(Nonce)))
+    let nonceStr = socket.recv(len(Nonce))
     # Cast nonce from string to array[12, byte] for chacha20 (12 bytes)
     let nonce = cast[ptr(Nonce)](unsafeAddr(nonceStr[0]))
 
     # Read rest of the data (encrypted)
-    let dataEncrypted = await(socket.recv(dataLen))
+    let dataEncrypted = socket.recv(dataLen)
 
     return ncDecodeMessage(dataEncrypted, key, nonce[])
 
-proc ncReceiveMessageFromNode*(nodeSocket: AsyncSocket, key: Key): Future[NCMessageFromNode] {. async .} =
+proc ncReceiveMessageFromNode*(nodeSocket: Socket, key: Key): NCMessageFromNode =
     echo("ncReceiveNodeMessage()")
 
-    let message = await(ncReceiveMessage(nodeSocket, key))
+    let message = ncReceiveMessage(nodeSocket, key)
 
     # Deserialize data using flatty
     # https://github.com/treeform/flatty
@@ -75,10 +76,10 @@ proc ncReceiveMessageFromNode*(nodeSocket: AsyncSocket, key: Key): Future[NCMess
 
     return nodeMessage
 
-proc ncReceiveMessageFromServer*(serverSocket: AsyncSocket, key: Key): Future[NCMessageFromServer] {. async .} =
+proc ncReceiveMessageFromServer*(serverSocket: Socket, key: Key): NCMessageFromServer =
     echo("ncReceiveServerMessage()")
 
-    let message = await(ncReceiveMessage(serverSocket, key))
+    let message = ncReceiveMessage(serverSocket, key)
 
     # Deserialize data using flatty
     # https://github.com/treeform/flatty
@@ -97,7 +98,7 @@ proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
     # https://git.sr.ht/~ehmry/chacha20
     return chacha20(dataCompressed, key, nonce)
 
-proc ncSendMessage(socket: AsyncSocket, key: Key, data: string) {. async .} =
+proc ncSendMessage(socket: Socket, key: Key, data: string) =
     echo("ncSendMessage()")
 
     var nonce: Nonce
@@ -114,31 +115,31 @@ proc ncSendMessage(socket: AsyncSocket, key: Key, data: string) {. async .} =
     bigEndian32(unsafeAddr(dataLenStr), unsafeAddr(dataLen))
 
     # Send data length to socket
-    await(socket.send(dataLenStr))
+    socket.send(dataLenStr)
 
     let nonceStr = newString(nonce.len())
     copyMem(unsafeAddr(nonceStr[0]), unsafeAddr(nonce), nonce.len())
 
     # Send nonce to socket
-    await(socket.send(nonceStr))
+    socket.send(nonceStr)
 
     # Send the encrypted data to socket
-    await(socket.send(dataEncrypted))
+    socket.send(dataEncrypted)
 
-proc ncSendMessageToNode*(nodeSocket: AsyncSocket, key: Key, nodeMessage: NCMessageToNode) {. async .} =
+proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageToNode) =
     echo("ncSendNodeMessage()")
 
     # Serialize using Flatty
     # https://github.com/treeform/flatty
     let data = toFlatty(nodeMessage)
 
-    await(ncSendMessage(nodeSocket, key, data))
+    ncSendMessage(nodeSocket, key, data)
 
-proc ncSendMessageToServer*(serverSocket: AsyncSocket, key: Key, serverMessage: NCMessageToServer) {. async .} =
+proc ncSendMessageToServer*(serverSocket: Socket, key: Key, serverMessage: NCMessageToServer) =
     echo("ncSendServerMessage()")
 
     # Serialize using Flatty
     # https://github.com/treeform/flatty
     let data = toFlatty(serverMessage)
 
-    await(ncSendMessage(serverSocket, key, data))
+    ncSendMessage(serverSocket, key, data)

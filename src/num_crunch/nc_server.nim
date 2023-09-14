@@ -1,6 +1,11 @@
 
 # Nim std imports
-import std/[asyncnet, asyncdispatch]
+import std/net
+import std/locks
+import std/typedthreads
+import std/deques
+
+from std/os import sleep
 from std/strformat import fmt
 from std/nativesockets import Port
 from std/random import randomize
@@ -23,19 +28,22 @@ type
         nodes: seq[NCNodeID]
         quit: bool
 
-proc ncCheckNodesHeartbeat(ncServer: NCServer) {. async .} =
+    ClientThread = Thread[(NCServer, Socket)]
+
+proc ncCheckNodesHeartbeat(self: NCServer) {.thread.} =
     echo("NCServer.ncCheckNodesHeartbeat()")
 
     # Convert from seconds to miliseconds
     # and add a small tolerance for the client nodes
     const tolerance: uint = 500 # 500 ms tolerance
-    let timeOut = (uint(ncServer.heartbeatTimeout) * 1000) + tolerance
+    let timeOut = (uint(self.heartbeatTimeout) * 1000) + tolerance
 
-    await(sleepAsync(int(timeOut)))
-    # TODO: check the heartbeat messages and times for each node
-    echo("Check heartbeat for all nodes")
+    while not self.quit:
+        sleep(int(timeOut))
+        echo("Check heartbeat for all nodes")
+        # TODO: send message to server on the same host
 
-proc ncCreateNewNodeId(ncServer: NCServer): NCNodeID =
+proc ncCreateNewNodeId(self: NCServer): NCNodeID =
     echo("NCServer.ncCreateNewNodeId()")
 
     result = ncNewNodeId()
@@ -43,48 +51,50 @@ proc ncCreateNewNodeId(ncServer: NCServer): NCNodeID =
 
     while not quit:
         quit = true
-        for n in ncServer.nodes:
+        for n in self.nodes:
             if result == n:
                 # NodeId already in use, choose a new one
                 result = ncNewNodeId()
                 quit = false
 
-proc ncSendNewNodeId(ncServer: NCServer, client: AsyncSocket, newId: NCNodeID) {. async .} =
+proc ncSendNewNodeId(self: NCServer, client: Socket, newId: NCNodeID) =
     echo("NCServer.ncSendNewNodeId()")
 
     let data = toFlatty(newId)
     let message = NCNodeMessage(kind: NCNodeMsgKind.welcome, data: data)
 
-    await(ncSendMessageToNode(client, ncServer.key, message))
+    ncSendMessageToNode(client, self.key, message)
 
-proc ncValidNodeId(ncServer: NCServer, id: NCNodeID): bool =
+proc ncValidNodeId(self: NCServer, id: NCNodeID): bool =
     echo("NCServer.ncValidNodeId(), id: ", id)
     # TODO: check if node id is valid
 
     return true
 
-proc ncHandleClient(ncServer: NCServer, client: AsyncSocket) {. async .} =
+proc ncHandleClient(tp: (NCServer, Socket)) =
     echo("NCServer.ncHandleClient()")
+
+    let (self, client) = tp
 
     let (clientAddr, clientPort) = client.getPeerAddr()
     echo(fmt("Connection from: {clientAddr}, port: {clientPort.uint16}"))
 
-    let serverMessage = await(ncReceiveMessageFromNode(client, ncServer.key))
+    let serverMessage = ncReceiveMessageFromNode(client, self.key)
 
     # TODO: write code to handle clients
     case serverMessage.kind:
     of NCServerMsgKind.registerNewNode:
         # Create a new node id and send it to the node
-        let newId = ncServer.ncCreateNewNodeId()
-        await(ncServer.ncSendNewNodeId(client, newId))
+        let newId = self.ncCreateNewNodeId()
+        self.ncSendNewNodeId(client, newId)
     of NCServerMsgKind.needsData:
-        if ncServer.ncValidNodeId(serverMessage.id):
+        if self.ncValidNodeId(serverMessage.id):
             echo("Node id valid: ", serverMessage.id)
             # asyncdispatch: hasPendingOperations(), poll(10)
-            # if ncServer.dataManager.ncIsDone():
+            # if self.dataManager.ncIsDone():
             #
             # else:
-            # let newData = toFlatty(ncServer.dataManader.ncGetNewData())
+            # let newData = toFlatty(self.dataManader.ncGetNewData())
             # let message = NCMessageToNode(NCNodeMsgKind.newData, newData)
             # await(ncSendMessageToNode)
         else:
@@ -97,68 +107,67 @@ proc ncHandleClient(ncServer: NCServer, client: AsyncSocket) {. async .} =
         discard
         # if ncServer.ncValidNodeId(serverMessage.id):
         # ncServer.ncProcessHearbeat(serverMessage.data)
+    of NCServerMsgKind.checkHeartbeat:
+        discard
+    of NCServerMsgKind.getStatistics:
+        discard
+    of NCServerMsgKind.forceQuit:
+        discard
 
 
-proc ncServe(ncServer: NCServer) {. async .} =
-    echo("NCServer.ncServe()")
+proc run*(self: NCServer) =
+    echo("NCServer.run()")
 
-    let server = newAsyncSocket()
-    server.setSockOpt(OptReuseAddr, true)
-    server.bindAddr(ncServer.serverPort)
-    server.listen()
+    var hbThreadId: Thread[NCServer]
 
-    # Create futures outside the while loop once
-    # and then create new futures inside the loop
-    var hbFuture = ncServer.ncCheckNodesHeartbeat()
-    var srvFuture = server.accept()
+    createThread(hbThreadId, ncCheckNodesHeartbeat, self)
 
-    while not ncServer.quit:
-        asyncCheck(hbFuture)
-        asyncCheck(srvFuture)
-        await(hbFuture or srvFuture)
+    var clientThreadId: ClientThread
+    # var clients: Deque[ClientThread] = initDeque()
+    var clients: Deque[ClientThread]
 
-        if srvFuture.finished() and not srvFuture.failed():
-            let client = srvFuture.read()
-            let clientFuture = ncServer.ncHandleClient(client)
+    let socket = newSocket()
+    socket.bindAddr(Port(self.serverPort))
+    socket.listen()
 
-            # Create a new fresh future here since
-            # the old one is already done
-            srvFuture = server.accept()
-            #srvFuture.clean()
+    var client: Socket
+    var address = ""
 
-            asyncCheck(clientFuture)
-            await(clientFuture)
+    while not self.quit:
+        socket.acceptAddr(client, address)
+        createThread(clientThreadId, ncHandleClient, (self, client))
+        clients.addLast(clientThreadId)
+        if clients.len() > 1:
+            if not clients[0].running():
+                joinThread(clients.popFirst())
 
-        if hbFuture.finished() and not hbFuture.failed():
-            # Create a new fresh future here since
-            # the old one is already done
-            hbFuture = ncServer.ncCheckNodesHeartbeat()
-            #bhFuture.clean()
+    joinThread(hbThreadId)
 
-proc ncRun*(config: NCConfiguration) =
-    echo("Starting NCServer with port: ", config.serverPort.uint16)
+    for th in clients.items():
+        joinThread(th)
+
+proc init*(ncConfig: NCConfiguration): NCServer =
+    echo("init(config)")
 
     # Initiate the random number genertator
     randomize()
 
     var ncServer = NCServer()
 
-    ncServer.serverPort = config.serverPort
-
+    ncServer.serverPort = ncConfig.serverPort
     # Cast key from string to array[32, byte] for chacha20 (32 bytes)
-    let keyStr = config.secretKey
-    assert(keyStr.len() == len(Key))
+    let keyStr = ncConfig.secretKey
+    echo(fmt("Key length: {keyStr.len()}"))
+    assert(keyStr.len() == len(Key), "Key must be exactly 32 bytes long")
     let key = cast[ptr(Key)](unsafeAddr(keyStr[0]))
 
     ncServer.key = key[]
-    ncServer.heartbeatTimeout = config.heartbeatTimeout
+    ncServer.heartbeatTimeout = ncConfig.heartbeatTimeout
 
-    let serverFuture = ncServer.ncServe()
-    asyncCheck(serverFuture)
-    waitFor(serverFuture)
+    return ncServer
 
-proc ncRun*(fileName: string) =
-    echo("Load configration from file: ", fileName)
+proc init*(fileName: string): NCServer =
+    echo(fmt("init({fileName})"))
 
     let config = ncLoadConfig(fileName)
-    ncRun(config)
+    init(config)
