@@ -4,10 +4,10 @@ import std/net
 import std/locks
 import std/typedthreads
 import std/deques
+import std/atomics
 
 from std/os import sleep
 from std/strformat import fmt
-from std/nativesockets import Port
 from std/random import randomize
 
 # External imports
@@ -26,11 +26,11 @@ type
         # In seconds
         heartbeatTimeout: uint16
         nodes: seq[NCNodeID]
-        quit: bool
+        quit: Atomic[bool]
 
     ClientThread = Thread[(NCServer, Socket)]
 
-proc ncCheckNodesHeartbeat(self: NCServer) {.thread.} =
+proc ncCheckNodesHeartbeat(self: ptr NCServer) {.thread.} =
     echo("NCServer.ncCheckNodesHeartbeat()")
 
     # Convert from seconds to miliseconds
@@ -38,7 +38,7 @@ proc ncCheckNodesHeartbeat(self: NCServer) {.thread.} =
     const tolerance: uint = 500 # 500 ms tolerance
     let timeOut = (uint(self.heartbeatTimeout) * 1000) + tolerance
 
-    while not self.quit:
+    while not self.quit.load():
         sleep(int(timeOut))
         echo("Check heartbeat for all nodes")
         # TODO: send message to server on the same host
@@ -115,25 +115,24 @@ proc ncHandleClient(tp: (NCServer, Socket)) =
         discard
 
 
-proc run*(self: NCServer) =
+proc run*(self: var NCServer) =
     echo("NCServer.run()")
 
-    var hbThreadId: Thread[NCServer]
+    var hbThreadId: Thread[ptr NCServer]
 
-    createThread(hbThreadId, ncCheckNodesHeartbeat, self)
+    createThread(hbThreadId, ncCheckNodesHeartbeat, unsafeAddr(self))
 
     var clientThreadId: ClientThread
-    # var clients: Deque[ClientThread] = initDeque()
     var clients: Deque[ClientThread]
 
     let socket = newSocket()
-    socket.bindAddr(Port(self.serverPort))
+    socket.bindAddr(self.serverPort)
     socket.listen()
 
     var client: Socket
     var address = ""
 
-    while not self.quit:
+    while not self.quit.load():
         socket.acceptAddr(client, address)
         createThread(clientThreadId, ncHandleClient, (self, client))
         clients.addLast(clientThreadId)
