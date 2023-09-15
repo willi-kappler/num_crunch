@@ -1,7 +1,6 @@
 
 # Nim std imports
 import std/net
-import std/locks
 import std/typedthreads
 import std/deques
 import std/atomics
@@ -9,6 +8,8 @@ import std/atomics
 from std/os import sleep
 from std/strformat import fmt
 from std/random import randomize
+from std/times import Time, getTime
+from std/locks import withLock, Lock
 
 # External imports
 from chacha20 import Key
@@ -25,10 +26,11 @@ type
         key: Key
         # In seconds
         heartbeatTimeout: uint16
-        nodes: seq[NCNodeID]
+        nodes: seq[(NCNodeID, Time)]
+        nodesLock: Lock
         quit: Atomic[bool]
 
-    ClientThread = Thread[(NCServer, Socket)]
+    ClientThread = Thread[(ptr NCServer, Socket)]
 
 proc ncCheckNodesHeartbeat(self: ptr NCServer) {.thread.} =
     echo("NCServer.ncCheckNodesHeartbeat()")
@@ -38,12 +40,18 @@ proc ncCheckNodesHeartbeat(self: ptr NCServer) {.thread.} =
     const tolerance: uint = 500 # 500 ms tolerance
     let timeOut = (uint(self.heartbeatTimeout) * 1000) + tolerance
 
+    let heartbeatMessage = NCMessageToServer(kind: NCServerMsgKind.checkHeartbeat)
+
     while not self.quit.load():
         sleep(int(timeOut))
-        echo("Check heartbeat for all nodes")
-        # TODO: send message to server on the same host
 
-proc ncCreateNewNodeId(self: NCServer): NCNodeID =
+        # Send message to server (self) so that it can check the heartbeats for all nodes
+        let serverSocket = newSocket()
+        serverSocket.connect("127.0.0.1", self.serverPort)
+        ncSendMessageToServer(serverSocket, self.key, heartbeatMessage)
+        serverSocket.close()
+
+proc ncCreateNewNodeId(self: ptr NCServer): NCNodeID =
     echo("NCServer.ncCreateNewNodeId()")
 
     result = ncNewNodeId()
@@ -51,69 +59,78 @@ proc ncCreateNewNodeId(self: NCServer): NCNodeID =
 
     while not quit:
         quit = true
-        for n in self.nodes:
+        for (n, _) in self.nodes:
             if result == n:
                 # NodeId already in use, choose a new one
                 result = ncNewNodeId()
                 quit = false
 
-proc ncSendNewNodeId(self: NCServer, client: Socket, newId: NCNodeID) =
-    echo("NCServer.ncSendNewNodeId()")
-
-    let data = toFlatty(newId)
-    let message = NCNodeMessage(kind: NCNodeMsgKind.welcome, data: data)
-
-    ncSendMessageToNode(client, self.key, message)
-
-proc ncValidNodeId(self: NCServer, id: NCNodeID): bool =
+proc ncValidNodeId(self: ptr NCServer, id: NCNodeID): bool =
     echo("NCServer.ncValidNodeId(), id: ", id)
-    # TODO: check if node id is valid
 
-    return true
+    result = false
 
-proc ncHandleClient(tp: (NCServer, Socket)) =
+    withLock self.nodesLock:
+      for (n, _) in self.nodes:
+        if n == id:
+          result = true
+          break
+
+
+proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
     echo("NCServer.ncHandleClient()")
 
-    let (self, client) = tp
+    let self = tp[0]
+    let client = tp[1]
 
     let (clientAddr, clientPort) = client.getPeerAddr()
     echo(fmt("Connection from: {clientAddr}, port: {clientPort.uint16}"))
 
     let serverMessage = ncReceiveMessageFromNode(client, self.key)
 
-    # TODO: write code to handle clients
     case serverMessage.kind:
     of NCServerMsgKind.registerNewNode:
+        echo("Register new node")
         # Create a new node id and send it to the node
         let newId = self.ncCreateNewNodeId()
-        self.ncSendNewNodeId(client, newId)
+        let data = toFlatty(newId)
+        let message = NCMessageToNode(kind: NCNodeMsgKind.welcome, data: data)
+        ncSendMessageToNode(client, self.key, message)
+
     of NCServerMsgKind.needsData:
+        echo("Node needs data")
         if self.ncValidNodeId(serverMessage.id):
             echo("Node id valid: ", serverMessage.id)
-            # asyncdispatch: hasPendingOperations(), poll(10)
-            # if self.dataManager.ncIsDone():
-            #
-            # else:
-            # let newData = toFlatty(self.dataManader.ncGetNewData())
-            # let message = NCMessageToNode(NCNodeMsgKind.newData, newData)
-            # await(ncSendMessageToNode)
         else:
             echo("Node id invalid: ", serverMessage.id)
-    of NCServerMsgKind.processedData:
-        discard
-        # if ncServer.ncValidNodeId(serverMessage.id):
-        # ncServer.dataManager.ncCollectData(serverMessage.data)
-    of NCServerMsgKind.heartbeat:
-        discard
-        # if ncServer.ncValidNodeId(serverMessage.id):
-        # ncServer.ncProcessHearbeat(serverMessage.data)
-    of NCServerMsgKind.checkHeartbeat:
-        discard
-    of NCServerMsgKind.getStatistics:
-        discard
-    of NCServerMsgKind.forceQuit:
-        discard
 
+    of NCServerMsgKind.processedData:
+        echo("Node has processed data")
+        if self.ncValidNodeId(serverMessage.id):
+            echo("Node id valid: ", serverMessage.id)
+        else:
+            echo("Node id invalid: ", serverMessage.id)
+
+    of NCServerMsgKind.heartbeat:
+        echo("Node sends heartbeat")
+
+        withLock self.nodesLock:
+            for i in 0..self.nodes.len():
+                if self.nodes[i][0] == serverMessage.id:
+                  self.nodes[i][1] = getTime()
+                  break
+
+    of NCServerMsgKind.checkHeartbeat:
+        echo("Check heartbeat times for all nodes")
+
+    of NCServerMsgKind.getStatistics:
+        echo("Send some statistics")
+
+    of NCServerMsgKind.forceQuit:
+        echo("Force quit")
+        self.quit.store(true)
+
+    client.close()
 
 proc run*(self: var NCServer) =
     echo("NCServer.run()")
@@ -134,7 +151,7 @@ proc run*(self: var NCServer) =
 
     while not self.quit.load():
         socket.acceptAddr(client, address)
-        createThread(clientThreadId, ncHandleClient, (self, client))
+        createThread(clientThreadId, ncHandleClient, (unsafeAddr(self), client))
         clients.addLast(clientThreadId)
         if clients.len() > 1:
             if not clients[0].running():
@@ -170,3 +187,4 @@ proc init*(fileName: string): NCServer =
 
     let config = ncLoadConfig(fileName)
     init(config)
+
