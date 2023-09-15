@@ -23,7 +23,6 @@ type
 
 type
     NCServerMsgKind* = enum
-        # TODO: add statistics, forceQuit
         registerNewNode, needsData, processedData, heartbeat, checkHeartbeat, getStatistics,
         forceQuit
     NCServerMessage* = object
