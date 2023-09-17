@@ -43,12 +43,12 @@ proc ncCheckNodesHeartbeat(self: ptr NCServer) {.thread.} =
     let timeOut = (uint(self.heartbeatTimeout) * 1000) + tolerance
 
     let heartbeatMessage = NCMessageToServer(kind: NCServerMsgKind.checkHeartbeat)
+    let serverSocket = newSocket()
 
     while not self.quit.load():
         sleep(int(timeOut))
 
         # Send message to server (self) so that it can check the heartbeats for all nodes
-        let serverSocket = newSocket()
         serverSocket.connect("127.0.0.1", self.serverPort)
         ncSendMessageToServer(serverSocket, self.key, heartbeatMessage)
         serverSocket.close()
@@ -168,8 +168,8 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
     release(self.serverLock)
     client.close()
 
-proc run*(self: var NCServer) =
-    echo("NCServer.run()")
+proc runServer*(self: var NCServer) =
+    echo("NCServer.runServer()")
 
     var hbThreadId: Thread[ptr NCServer]
 
@@ -213,8 +213,8 @@ proc run*(self: var NCServer) =
 
     deinitLock(self.serverLock)
 
-proc init*[T](dataProcessor: T, ncConfig: NCConfiguration): NCServer =
-    echo("init(config)")
+proc initServer*[T](dataProcessor: T, ncConfig: NCConfiguration): NCServer =
+    echo("initServer(config)")
 
     # Initiate the random number genertator
     randomize()
@@ -233,9 +233,9 @@ proc init*[T](dataProcessor: T, ncConfig: NCConfiguration): NCServer =
 
     return ncServer
 
-proc init*[T](dataProcessor: T, fileName: string): NCServer =
-    echo(fmt("init({fileName})"))
+proc initServer*[T](dataProcessor: T, fileName: string): NCServer =
+    echo(fmt("initServer({fileName})"))
 
     let config = ncLoadConfig(fileName)
-    init(dataProcessor, config)
+    initServer(dataProcessor, config)
 
