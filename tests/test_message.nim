@@ -1,4 +1,6 @@
 
+import std/assertions
+
 from chacha20 import Nonce, Key
 from supersnappy import SnappyError
 
@@ -33,11 +35,9 @@ block:
     let encodedData = ncEncodeMessage(data, key[], nonce1[])
     assert(data != encodedData)
 
-    try:
+    doAssertRaises(SnappyError):
         let decodedData = ncDecodeMessage(encodedData, key[], nonce2[])
         assert(data != decodedData)
-    except SnappyError:
-        echo("OK")
 
 block:
     # Invalid key
@@ -53,8 +53,6 @@ block:
     let encodedData = ncEncodeMessage(data, key1[], nonce[])
     assert(data != encodedData)
 
-    try:
+    doAssertRaises(SnappyError):
         let decodedData = ncDecodeMessage(encodedData, key2[], nonce[])
         assert(data != decodedData)
-    except SnappyError:
-        echo("OK")
