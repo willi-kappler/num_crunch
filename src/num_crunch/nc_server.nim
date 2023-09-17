@@ -5,11 +5,11 @@ import std/typedthreads
 import std/deques
 import std/atomics
 import std/times
+import std/locks
 
 from std/os import sleep
 from std/strformat import fmt
 from std/random import randomize
-from std/locks import withLock, Lock
 
 # External imports
 from chacha20 import Key
@@ -21,14 +21,15 @@ import private/nc_nodeid
 import nc_config
 
 type
-    NCServer* = object
+    NCServer*[T] = object
         serverPort: Port
         key: Key
         # In seconds
         heartbeatTimeout: uint16
+        serverLock: Lock
         # Use a HashMap in the future
         nodes: seq[(NCNodeID, Time)]
-        nodesLock: Lock
+        dataProcessor: T
         quit: Atomic[bool]
 
     ClientThread = Thread[(ptr NCServer, Socket)]
@@ -71,11 +72,10 @@ proc ncValidNodeId(self: ptr NCServer, id: NCNodeID): bool =
 
     result = false
 
-    withLock self.nodesLock:
-      for (n, _) in self.nodes:
+    for (n, _) in self.nodes:
         if n == id:
-          result = true
-          break
+            result = true
+            break
 
 proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
     echo("NCServer.ncHandleClient()")
@@ -88,6 +88,19 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
 
     let serverMessage = ncReceiveMessageFromNode(client, self.key)
 
+    acquire(self.serverLock)
+
+    if self.dataProcessor.isFinished():
+        echo("Work is done, exit now!")
+
+        let message = NCMessageToNode(kind: NCNodeMsgKind.quit)
+        ncSendMessageToNode(client, self.key, message)
+        self.quit.store(true)
+        release(self.serverLock)
+        client.close()
+
+        return
+
     case serverMessage.kind:
     of NCServerMsgKind.registerNewNode:
         echo("Register new node")
@@ -99,8 +112,7 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
         ncSendMessageToNode(client, self.key, message)
 
         # Add the new node id to the list of active nodes
-        withLock self.nodesLock:
-            self.nodes.add((newId, getTime()))
+        self.nodes.add((newId, getTime()))
 
     of NCServerMsgKind.needsData:
         echo("Node needs data")
@@ -108,6 +120,9 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
         if self.ncValidNodeId(serverMessage.id):
             echo("Node id valid: ", serverMessage.id)
             # Send new data back to node
+            let newData = self.dataProcessor.getNewData(serverMessage.id)
+            let message = NCMessageToNode(kind: NCNodeMsgKind.newData, data: newData)
+            ncSendMessageToNode(client, self.key, message)
         else:
             echo("Node id invalid: ", serverMessage.id)
 
@@ -117,30 +132,30 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
         if self.ncValidNodeId(serverMessage.id):
             echo("Node id valid: ", serverMessage.id)
             # Store processed data from node
+            self.dataProcessor.collectData(serverMessage.data)
         else:
             echo("Node id invalid: ", serverMessage.id)
 
     of NCServerMsgKind.heartbeat:
         echo("Node sends heartbeat")
 
-        withLock self.nodesLock:
-            for i in 0..self.nodes.len():
-                if self.nodes[i][0] == serverMessage.id:
-                  self.nodes[i][1] = getTime()
-                  break
+        for i in 0..self.nodes.len():
+            if self.nodes[i][0] == serverMessage.id:
+                self.nodes[i][1] = getTime()
+                break
 
     of NCServerMsgKind.checkHeartbeat:
         echo("Check heartbeat times for all inodes")
 
-        let maxDuration = initDuration(seconds = int64(self.heartbeatTimeout))
+        const maxDuration = initDuration(seconds = int64(self.heartbeatTimeout))
 
-        withLock self.nodesLock:
-            let currentTime = getTime()
+        let currentTime = getTime()
 
-            for i in 0..self.nodes.len():
-                if currentTime - self.nodes[i][1] > maxDuration:
-                    echo(fmt("Node is not sending heartbeat message: {self.nodes[i][0]}"))
-                    # TODO: Disable node
+        for n in self.nodes:
+            if currentTime - n[1] > maxDuration:
+                echo(fmt("Node is not sending heartbeat message: {n[0]}"))
+                # Let data processor know that this node seems dead
+                self.dataProcessor.maybeDeadNode(n[0])
 
     of NCServerMsgKind.getStatistics:
         echo("Send some statistics")
@@ -150,6 +165,7 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
         echo("Force quit")
         self.quit.store(true)
 
+    release(self.serverLock)
     client.close()
 
 proc run*(self: var NCServer) =
@@ -162,15 +178,17 @@ proc run*(self: var NCServer) =
     var clientThreadId: ClientThread
     var clients: Deque[ClientThread]
 
-    let socket = newSocket()
-    socket.bindAddr(self.serverPort)
-    socket.listen()
+    initLock(self.serverLock)
+
+    let serverSocket = newSocket()
+    serverSocket.bindAddr(self.serverPort)
+    serverSocket.listen()
 
     var client: Socket
     var address = ""
 
     while not self.quit.load():
-        socket.acceptAddr(client, address)
+        serverSocket.acceptAddr(client, address)
         createThread(clientThreadId, ncHandleClient, (unsafeAddr(self), client))
         clients.addLast(clientThreadId)
 
@@ -180,19 +198,28 @@ proc run*(self: var NCServer) =
                 # Avaoid that sequence gets too large
                 joinThread(clients.popFirst())
 
+    acquire(self.serverLock)
+    # Save the user data as soon as possible
+    self.dataProcessor.saveData()
+    release(self.serverLock)
+
+    serverSocket.close()
+
     joinThread(hbThreadId)
 
     for th in clients.items():
         # If there are any other threads running, wait for them to finish
         joinThread(th)
 
-proc init*(ncConfig: NCConfiguration): NCServer =
+    deinitLock(self.serverLock)
+
+proc init*[T](dataProcessor: T, ncConfig: NCConfiguration): NCServer =
     echo("init(config)")
 
     # Initiate the random number genertator
     randomize()
 
-    var ncServer = NCServer()
+    var ncServer = NCServer(dataProcessor: dataProcessor)
 
     ncServer.serverPort = ncConfig.serverPort
     # Cast key from string to array[32, byte] for chacha20 (32 bytes)
@@ -206,9 +233,9 @@ proc init*(ncConfig: NCConfiguration): NCServer =
 
     return ncServer
 
-proc init*(fileName: string): NCServer =
+proc init*[T](dataProcessor: T, fileName: string): NCServer =
     echo(fmt("init({fileName})"))
 
     let config = ncLoadConfig(fileName)
-    init(config)
+    init(dataProcessor, config)
 
