@@ -20,6 +20,7 @@ type
     NCNode*[T] = object
         serverAddr: string
         serverPort: Port
+        key: Key
         # In seconds
         heartbeatTimeout: uint16
         nodeLock: Lock
@@ -99,10 +100,10 @@ proc runNode*(self: var NCNode) =
 
     joinThread(hbThreadId)
 
-proc initNode*[T](dataProcessor: T, ncConfig: NCConfiguration): NCNode =
+proc initNode*[T](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
     echo("initNode(config)")
 
-    var ncNode = NCNode(dataProcessor: dataProcessor)
+    var ncNode = NCNode[T](dataProcessor: dataProcessor)
 
     ncNode.serverPort = ncConfig.serverPort
     ncNode.serverAddr = ncConfig.serverAddr
@@ -117,7 +118,7 @@ proc initNode*[T](dataProcessor: T, ncConfig: NCConfiguration): NCNode =
 
     return ncNode
 
-proc initNode*[T](dataProcessor: T, filename: string) =
+proc initNode*[T](dataProcessor: T, filename: string): NCNode[T] =
     echo(fmt("initNode({fileName})"))
 
     let config = ncLoadConfig(fileName)
