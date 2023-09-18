@@ -21,7 +21,7 @@ import private/nc_nodeid
 import nc_config
 
 type
-    NCServer*[T] = object
+    NCServer*[T: NCDPServer] = object
         serverPort: Port
         key: Key
         # In seconds
@@ -33,6 +33,14 @@ type
         quit: Atomic[bool]
 
     ClientThread = Thread[(ptr NCServer, Socket)]
+
+    NCDPServer = concept dp
+        dp.isFinished() is bool
+        dp.getNewData(type NCNodeID) is seq[byte]
+        dp.collectData(type seq[byte])
+        dp.maybeDeadNode(type NCNodeID)
+        dp.saveData()
+
 
 proc ncCheckNodesHeartbeat(self: ptr NCServer) {.thread.} =
     echo("NCServer.ncCheckNodesHeartbeat()")
@@ -213,13 +221,13 @@ proc runServer*(self: var NCServer) =
 
     deinitLock(self.serverLock)
 
-proc initServer*[T](dataProcessor: T, ncConfig: NCConfiguration): NCServer =
+proc initServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): NCServer[T] =
     echo("initServer(config)")
 
     # Initiate the random number genertator
     randomize()
 
-    var ncServer = NCServer(dataProcessor: dataProcessor)
+    var ncServer = NCServer[T](dataProcessor: dataProcessor)
 
     ncServer.serverPort = ncConfig.serverPort
     # Cast key from string to array[32, byte] for chacha20 (32 bytes)
@@ -233,7 +241,7 @@ proc initServer*[T](dataProcessor: T, ncConfig: NCConfiguration): NCServer =
 
     return ncServer
 
-proc initServer*[T](dataProcessor: T, fileName: string): NCServer =
+proc initServer*[T: NCDPServer](dataProcessor: T, fileName: string): NCServer[T] =
     echo(fmt("initServer({fileName})"))
 
     let config = ncLoadConfig(fileName)
