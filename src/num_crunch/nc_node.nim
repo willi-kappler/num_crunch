@@ -17,7 +17,7 @@ import private/nc_nodeid
 import nc_config
 
 type
-    NCNode*[T] = object
+    NCNode*[T: NCDPNode] = object
         serverAddr: string
         serverPort: Port
         key: Key
@@ -27,6 +27,9 @@ type
         nodeId: NCNodeID
         dataProcessor: T
         quit: Atomic[bool]
+
+    NCDPNode* = concept dp
+        dp.processData(type seq[byte]) is seq[byte]
 
 proc ncSendHeartbeat(self: ptr NCNode) {.thread.} =
     echo("NCNode.ncSendHeartbeat()")
@@ -100,7 +103,7 @@ proc runNode*(self: var NCNode) =
 
     joinThread(hbThreadId)
 
-proc initNode*[T](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
+proc initNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
     echo("initNode(config)")
 
     var ncNode = NCNode[T](dataProcessor: dataProcessor)
@@ -118,7 +121,7 @@ proc initNode*[T](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
 
     return ncNode
 
-proc initNode*[T](dataProcessor: T, filename: string): NCNode[T] =
+proc initNode*[T: NCDPNode](dataProcessor: T, filename: string): NCNode[T] =
     echo(fmt("initNode({fileName})"))
 
     let config = ncLoadConfig(fileName)
