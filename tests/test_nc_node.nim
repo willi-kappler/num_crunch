@@ -7,8 +7,8 @@ type
     MyDP = object
         data: seq[byte]
 
-proc processData(dp: var MyDP, input: seq[byte]): seq[byte] =
-    dp.data
+proc processData(self: var MyDP, input: seq[byte]): seq[byte] =
+    self.data
 
 block:
     # Test init
@@ -25,3 +25,4 @@ block:
 
     doAssertRaises(IOError):
         let node = initNode(dataProcessor, filename)
+
