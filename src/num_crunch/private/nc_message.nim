@@ -17,7 +17,7 @@ type
         welcome, newData, quit
     NCNodeMessage* = object
         kind*: NCNodeMsgKind
-        data*: string
+        data*: seq[byte]
     NCMessageToNode* = NCNodeMessage
     NCMessageFromServer* = NCNodeMessage
 
@@ -28,9 +28,37 @@ type
     NCServerMessage* = object
         kind*: NCServerMsgKind
         id*: NCNodeID
-        data*: string
+        data*: seq[byte]
     NCMessageToServer* = NCServerMessage
     NCMessageFromNode* = NCServerMessage
+
+func ncStrToInt*(s: string): uint32 =
+    assert(s.len() == 4)
+    result = 0
+    bigEndian32(unsafeAddr(result), unsafeAddr(s[0]))
+
+func ncIntToStr*(i: uint32): string =
+    result = newString(4)
+    bigEndian32(unsafeAddr(result[0]), unsafeAddr(i))
+
+func ncStrToBytes*(s: string): seq[byte] =
+    @(s.toOpenArrayByte(0, s.high))
+
+func ncBytesToStr*(s: seq[byte]): string =
+    let l = s.len()
+    result = newString(l)
+
+    if l > 0:
+        copyMem(unsafeAddr(result[0]), unsafeAddr(s[0]), l)
+
+func ncNonceToStr(n: Nonce): string =
+    let l = n.len()
+    result = newString(l)
+    copyMem(unsafeAddr(result[0]), unsafeAddr(n[0]), l)
+
+func ncStrToNonce(s: string): ptr Nonce =
+    assert(s.len() == len(Nonce))
+    result = cast[ptr(Nonce)](unsafeAddr(s[0]))
 
 proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
     echo("ncDecodeMessage()")
@@ -50,17 +78,17 @@ proc ncReceiveMessage(socket: Socket, key: Key): string =
 
     # Read the length of the whole data set (4 bytes)
     let dataLenStr = socket.recv(4)
-    var dataLen = 0
     # Convert binary data into integer value
-    bigEndian32(unsafeAddr(dataLen), unsafeAddr(dataLenStr[0]))
+    var dataLen = ncStrToInt(dataLenStr)
+    # bigEndian32(unsafeAddr(dataLen), unsafeAddr(dataLenStr[0]))
 
     # Read the nonce for decrypting with chacha20 (12 bytes)
     let nonceStr = socket.recv(len(Nonce))
     # Cast nonce from string to array[12, byte] for chacha20 (12 bytes)
-    let nonce = cast[ptr(Nonce)](unsafeAddr(nonceStr[0]))
+    let nonce = ncStrToNonce(nonceStr)
 
     # Read rest of the data (encrypted)
-    let dataEncrypted = socket.recv(dataLen)
+    let dataEncrypted = socket.recv(int(dataLen))
 
     return ncDecodeMessage(dataEncrypted, key, nonce[])
 
@@ -107,17 +135,16 @@ proc ncSendMessage(socket: Socket, key: Key, data: string) =
 
     let dataEncrypted = ncEncodeMessage(data, key, nonce)
 
-    let dataLen = dataEncrypted.len()
-    let dataLenStr = newString(4)
-
+    let dataLen = uint32(dataEncrypted.len())
     # Convert binary data into integer value
-    bigEndian32(unsafeAddr(dataLenStr), unsafeAddr(dataLen))
+    let dataLenStr = ncIntToStr(dataLen)
+    # bigEndian32(unsafeAddr(dataLenStr), unsafeAddr(dataLen))
 
     # Send data length to socket
     socket.send(dataLenStr)
 
-    let nonceStr = newString(nonce.len())
-    copyMem(unsafeAddr(nonceStr[0]), unsafeAddr(nonce), nonce.len())
+    let nonceStr = ncNonceToStr(nonce)
+    # copyMem(unsafeAddr(nonceStr[0]), unsafeAddr(nonce[0]), nonce.len())
 
     # Send nonce to socket
     socket.send(nonceStr)
