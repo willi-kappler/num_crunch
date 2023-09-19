@@ -12,7 +12,6 @@ requires "flatty >= 0.3.4"
 requires "chacha20 >= 0.1.0"
 
 # Tasks
-
 task(testAll, "Run all test cases in tests/"):
     exec("testament --print --verbose c /")
 
