@@ -1,12 +1,18 @@
 
+# Nim std imports
 import std/parseopt
 import std/logging
 from std/strformat import fmt
+
+# Local imports
+import ../../src/num_crunch/nc_config
 
 if isMainModule:
     var runServer = false
     let logger = newFileLogger("mandel.log", fmtStr=verboseFmtStr)
     addHandler(logger)
+
+    let config = ncLoadConfig("config.ini")
 
     var cmdParser = initOptParser()
     while true:
@@ -24,6 +30,8 @@ if isMainModule:
 
     if runServer:
         info("Starting server")
+        #let server = ncInitServer(config)
     else:
         info("Starting Node")
+        #let node = initNode(config)
 
