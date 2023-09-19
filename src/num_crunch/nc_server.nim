@@ -213,13 +213,18 @@ proc runServer*(self: var NCServer) =
 
     serverSocket.close()
 
-    joinThread(hbThreadId)
+    echo("Waiting for other threads to finish...")
+    sleep(10*1000) # Wait 10 seconds to give the other threads a chance to finish
+
+    if not running(hbThreadId):
+        joinThread(hbThreadId)
 
     for th in clients.items():
-        # If there are any other threads running, wait for them to finish
-        joinThread(th)
+        if not running(th):
+            joinThread(th)
 
     deinitLock(self.serverLock)
+    echo("Will exit now!")
 
 proc initServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): NCServer[T] =
     echo("initServer(config)")
