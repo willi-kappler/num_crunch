@@ -23,7 +23,6 @@ type
         key: Key
         # In seconds
         heartbeatTimeout: uint16
-        nodeLock: Lock
         nodeId: NCNodeID
         dataProcessor: T
         quit: Atomic[bool]
@@ -101,7 +100,14 @@ proc runNode*(self: var NCNode) =
             echo("Unknown response: ", serverResponse.kind)
             self.quit.store(true)
 
-    joinThread(hbThreadId)
+    echo("Waiting for other thread to finish...")
+    # Try to join the heartbeat thread
+    sleep(10*1000) # Wait 10 seconds to give the thread a chance to finish
+
+    if not hbThreadId.running():
+        joinThread(hbThreadId)
+
+    echo("Will exit now!")
 
 proc initNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
     echo("initNode(config)")
