@@ -1,6 +1,17 @@
 
 
+import private/nc_nodeid
+
 type
+    NCTileStatusKind = enum
+        unprocessed,
+        inProgress,
+        done
+
+    NCTileStatus = object
+        status: NCTileStatusKind
+        nodeId: NCNodeId
+
     NCArray2D*[T] = object
         data: seq[T]
         tileSizeX: uint32
@@ -9,6 +20,7 @@ type
         numTilesY: uint32
         totalSizeX: uint32
         totalSizeY: uint32
+        tileStatus: seq[NCTileStatus]
 
 proc ncNewArray2D*[T](sizeX: uint32, sizeY: uint32, tileX: uint32, tileY: uint32): NCArray2D[T] =
     result.tileSizeX = sizeX
@@ -18,69 +30,82 @@ proc ncNewArray2D*[T](sizeX: uint32, sizeY: uint32, tileX: uint32, tileY: uint32
     result.data = newSeq[T](sizeX * sizeY * tileX * tileY)
     result.totalSizeX = sizeX * tileX
     result.totalSizeY = sizeY * tileY
+    result.tileStatus = newSeq[NCTileStatus](sizeX * sizeY)
 
-proc getXY*[T](a: NCArray2D[T], x: uint32, y: uint32): T =
-    let offset = (y * a.totalSizeX) + x
-    a.data[offset]
+proc getXY*[T](self: NCArray2D[T], x: uint32, y: uint32): T =
+    let offset = (y * self.totalSizeX) + x
+    self.data[offset]
 
-proc setXY*[T](a: var NCArray2D[T], x: uint32, y: uint32, v: T) =
-    let offset = (y * a.totalSizeX) + x
-    a.data[offset] = v
+proc setXY*[T](self: var NCArray2D[T], x: uint32, y: uint32, v: T) =
+    let offset = (y * self.totalSizeX) + x
+    self.data[offset] = v
 
-proc getData*[T](a: NCArray2D[T]): ref seq[T] =
-    addr(a.data)
+proc getData*[T](self: NCArray2D[T]): ref seq[T] =
+    addr(self.data)
 
-proc getTileXY*[T](a: NCArray2D[T], ax: uint32, ay: uint32): seq[T] =
-    result = newSeq(a.tileSizeX * a.tileSizeY)
-    let offsetY = a.totalSizeX * a.tileSizeY * ay
-    let offsetX = a.tileSizeX * ax
+proc getTileXY*[T](self: NCArray2D[T], ax: uint32, ay: uint32): seq[T] =
+    result = newSeq(self.tileSizeX * self.tileSizeY)
+    let offsetY = self.totalSizeX * self.tileSizeY * ay
+    let offsetX = self.tileSizeX * ax
     let offset = offsetX + offsetY
 
-    for ty in 0..(a.tileSizeY - 1):
+    for ty in 0..(self.tileSizeY - 1):
         # Offset inside tile
-        let ii = ty * a.tileSizeX
+        let ii = ty * self.tileSizeX
         # Offset inside array
-        let jj = offset + (ty * a.totalSizeX)
+        let jj = offset + (ty * self.totalSizeX)
 
-        for tx in 0..(a.tileSizeX - 1):
+        for tx in 0..(self.tileSizeX - 1):
             let i = ii + tx
             let j = jj + tx
-            result[i] = a.data[j]
+            result[i] = self.data[j]
 
-proc setTileXY*[T](a: var NCArray2D[T], ax: uint32, ay: uint32, tile: seq[T]) =
-    let offsetY = a.totalSizeX * a.tileSizeY * ay
-    let offsetX = a.tileSizeX * ax
+proc setTileXY*[T](self: var NCArray2D[T], ax: uint32, ay: uint32, tile: seq[T]) =
+    let offsetY = self.totalSizeX * self.tileSizeY * ay
+    let offsetX = self.tileSizeX * ax
     let offset = offsetX + offsetY
 
-    for ty in 0..(a.tileSizeY - 1):
+    for ty in 0..(self.tileSizeY - 1):
         # Offset inside tile
-        let ii = ty * a.tileSizeX
+        let ii = ty * self.tileSizeX
         # Offset inside array
-        let jj = offset + (ty * a.totalSizeX)
+        let jj = offset + (ty * self.totalSizeX)
 
-        for tx in 0..(a.tileSizeX - 1):
+        for tx in 0..(self.tileSizeX - 1):
             let i = ii + tx
             let j = jj + tx
-            a.data[j] = tile[i]
+            self.data[j] = tile[i]
 
-proc fillArray*[T](a: var NCArray2D[T], v: T) =
-    for y in 0..(a.totalSizeY - 1):
-        let ii = y * a.totalSizeX
-        for x in 0..(a.totalSizeX - 1):
+proc fillArray*[T](self: var NCArray2D[T], v: T) =
+    for y in 0..(self.totalSizeY - 1):
+        let ii = y * self.totalSizeX
+        for x in 0..(self.totalSizeX - 1):
             let i = ii + x
-            a.data[i] = v
+            self.data[i] = v
 
-proc fillTile*[T](a: var NCArray2D[T], ax: uint32, ay: uint32, v: T) =
-    let offsetY = a.totalSizeX * a.tileSizeY * ay
-    let offsetX = a.tileSizeX * ax
+proc fillTile*[T](self: var NCArray2D[T], ax: uint32, ay: uint32, v: T) =
+    let offsetY = self.totalSizeX * self.tileSizeY * ay
+    let offsetX = self.tileSizeX * ax
     let offset = offsetX + offsetY
 
-    for ty in 0..(a.tileSizeY - 1):
+    for ty in 0..(self.tileSizeY - 1):
         # Offset inside array
-        let i = offset + (ty * a.totalSizeX)
+        let i = offset + (ty * self.totalSizeX)
 
-        for tx in 0..(a.tileSizeX - 1):
+        for tx in 0..(self.tileSizeX - 1):
             let i = i + tx
-            a.data[i] = v
+            self.data[i] = v
+
+func isFinished*[T](self: NCArray2D[T]): bool =
+    result = true
+
+    for s in self.tileStatus:
+        if s.status == NCTileStatusKind.inProgress:
+            result = false
+            break
+        elif s.status == NCTileStatusKind.unprocessed:
+            result = false
+            break
+
 
 
