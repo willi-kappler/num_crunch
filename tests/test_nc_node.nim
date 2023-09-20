@@ -16,7 +16,7 @@ block:
     let filename = currentDir & "/config1.ini"
     let dataProcessor = MyDP()
 
-    let node = initNode(dataProcessor, filename)
+    let node = ncInitNode(dataProcessor, filename)
 
 block:
     # Test init with invalid filename
@@ -24,5 +24,5 @@ block:
     let dataProcessor = MyDP()
 
     doAssertRaises(IOError):
-        let node = initNode(dataProcessor, filename)
+        let node = ncInitNode(dataProcessor, filename)
 

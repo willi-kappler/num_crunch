@@ -3,7 +3,6 @@
 import std/net
 import std/typedthreads
 import std/atomics
-import std/locks
 
 from std/os import sleep
 from std/strformat import fmt
@@ -46,8 +45,8 @@ proc ncSendHeartbeat(self: ptr NCNode) {.thread.} =
         ncSendMessageToServer(nodeSocket, self.key, heartbeatMessage)
         nodeSocket.close()
 
-proc runNode*(self: var NCNode) =
-    echo("NCNode.runNode()")
+proc ncRunNode*(self: var NCNode) =
+    echo("NCNode.ncRunNode()")
 
     var hbThreadId: Thread[ptr NCNode]
     var nodeId: NCNodeID
@@ -109,8 +108,8 @@ proc runNode*(self: var NCNode) =
 
     echo("Will exit now!")
 
-proc initNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
-    echo("initNode(config)")
+proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
+    echo("ncInitNode(config)")
 
     var ncNode = NCNode[T](dataProcessor: dataProcessor)
 
@@ -127,8 +126,9 @@ proc initNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNode
 
     return ncNode
 
-proc initNode*[T: NCDPNode](dataProcessor: T, filename: string): NCNode[T] =
-    echo(fmt("initNode({fileName})"))
+proc ncInitNode*[T: NCDPNode](dataProcessor: T, filename: string): NCNode[T] =
+    echo(fmt("ncInitNode({fileName})"))
 
     let config = ncLoadConfig(fileName)
-    initNode(dataProcessor, config)
+    ncInitNode(dataProcessor, config)
+

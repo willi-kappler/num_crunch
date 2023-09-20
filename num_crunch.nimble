@@ -20,6 +20,8 @@ task(checkAll, "run 'nim check' on all source files"):
     exec("nim check num_crunch.nim")
 
     cd("num_crunch/")
+    exec("nim check nc_array2d.nim")
+    exec("nim check nc_array3d.nim")
     exec("nim check nc_common.nim")
     exec("nim check nc_config.nim")
     exec("nim check nc_node.nim")
