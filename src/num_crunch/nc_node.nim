@@ -29,8 +29,8 @@ type
     NCDPNode* = concept dp
         dp.processData(type seq[byte]) is seq[byte]
 
-proc ncSendHeartbeat(self: ptr NCNode) {.thread.} =
-    echo("NCNode.ncSendHeartbeat()")
+proc sendHeartbeat(self: ptr NCNode) {.thread.} =
+    echo("NCNode.sendHeartbeat()")
 
     let timeOut = uint(self.heartbeatTimeout)
 
@@ -45,13 +45,13 @@ proc ncSendHeartbeat(self: ptr NCNode) {.thread.} =
         ncSendMessageToServer(nodeSocket, self.key, heartbeatMessage)
         nodeSocket.close()
 
-proc ncRunNode*(self: var NCNode) =
-    echo("NCNode.ncRunNode()")
+proc runNode*(self: var NCNode) =
+    echo("NCNode.runNode()")
 
     var hbThreadId: Thread[ptr NCNode]
     var nodeId: NCNodeID
 
-    createThread(hbThreadId, ncSendHeartbeat, unsafeAddr(self))
+    createThread(hbThreadId, sendHeartbeat, unsafeAddr(self))
 
     let nodeSocket = newSocket()
     let registerMessage = NCMessageToServer(kind: NCServerMsgKind.registerNewNode)

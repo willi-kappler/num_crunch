@@ -42,8 +42,8 @@ type
         dp.saveData()
 
 
-proc ncCheckNodesHeartbeat(self: ptr NCServer) {.thread.} =
-    echo("NCServer.ncCheckNodesHeartbeat()")
+proc checkNodesHeartbeat(self: ptr NCServer) {.thread.} =
+    echo("NCServer.checkNodesHeartbeat()")
 
     # Convert from seconds to miliseconds
     # and add a small tolerance for the client nodes
@@ -61,8 +61,8 @@ proc ncCheckNodesHeartbeat(self: ptr NCServer) {.thread.} =
         ncSendMessageToServer(serverSocket, self.key, heartbeatMessage)
         serverSocket.close()
 
-proc ncCreateNewNodeId(self: ptr NCServer): NCNodeID =
-    echo("NCServer.ncCreateNewNodeId()")
+proc createNewNodeId(self: ptr NCServer): NCNodeID =
+    echo("NCServer.createNewNodeId()")
 
     result = ncNewNodeId()
     var quit = false
@@ -75,8 +75,8 @@ proc ncCreateNewNodeId(self: ptr NCServer): NCNodeID =
                 result = ncNewNodeId()
                 quit = false
 
-proc ncValidNodeId(self: ptr NCServer, id: NCNodeID): bool =
-    echo("NCServer.ncValidNodeId(), id: ", id)
+proc validNodeId(self: ptr NCServer, id: NCNodeID): bool =
+    echo("NCServer.validNodeId(), id: ", id)
 
     result = false
 
@@ -85,8 +85,8 @@ proc ncValidNodeId(self: ptr NCServer, id: NCNodeID): bool =
             result = true
             break
 
-proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
-    echo("NCServer.ncHandleClient()")
+proc handleClient(tp: (ptr NCServer, Socket)) {.thread.} =
+    echo("NCServer.handleClient()")
 
     let self = tp[0]
     let client = tp[1]
@@ -114,7 +114,7 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
         echo("Register new node")
 
         # Create a new node id and send it to the node
-        let newId = self.ncCreateNewNodeId()
+        let newId = self.createNewNodeId()
         let data = toFlatty(newId)
         let message = NCMessageToNode(kind: NCNodeMsgKind.welcome, data: data)
         ncSendMessageToNode(client, self.key, message)
@@ -125,7 +125,7 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
     of NCServerMsgKind.needsData:
         echo("Node needs data")
 
-        if self.ncValidNodeId(serverMessage.id):
+        if self.validNodeId(serverMessage.id):
             echo("Node id valid: ", serverMessage.id)
             # Send new data back to node
             let newData = self.dataProcessor.getNewData(serverMessage.id)
@@ -137,7 +137,7 @@ proc ncHandleClient(tp: (ptr NCServer, Socket)) {.thread.} =
     of NCServerMsgKind.processedData:
         echo("Node has processed data")
 
-        if self.ncValidNodeId(serverMessage.id):
+        if self.validNodeId(serverMessage.id):
             echo("Node id valid: ", serverMessage.id)
             # Store processed data from node
             self.dataProcessor.collectData(serverMessage.data)
@@ -181,7 +181,7 @@ proc runServer*(self: var NCServer) =
 
     var hbThreadId: Thread[ptr NCServer]
 
-    createThread(hbThreadId, ncCheckNodesHeartbeat, unsafeAddr(self))
+    createThread(hbThreadId, checkNodesHeartbeat, unsafeAddr(self))
 
     var clientThreadId: ClientThread
     var clients: Deque[ClientThread]
@@ -197,7 +197,7 @@ proc runServer*(self: var NCServer) =
 
     while not self.quit.load():
         serverSocket.acceptAddr(client, address)
-        createThread(clientThreadId, ncHandleClient, (unsafeAddr(self), client))
+        createThread(clientThreadId, handleClient, (unsafeAddr(self), client))
         clients.addLast(clientThreadId)
 
         # Wait until there are at least two nodes
@@ -226,8 +226,8 @@ proc runServer*(self: var NCServer) =
     deinitLock(self.serverLock)
     echo("Will exit now!")
 
-proc initServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): NCServer[T] =
-    echo("initServer(config)")
+proc ncInitServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): NCServer[T] =
+    echo("ncInitServer(config)")
 
     # Initiate the random number genertator
     randomize()
@@ -246,9 +246,9 @@ proc initServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): NC
 
     return ncServer
 
-proc initServer*[T: NCDPServer](dataProcessor: T, fileName: string): NCServer[T] =
-    echo(fmt("initServer({fileName})"))
+proc ncInitServer*[T: NCDPServer](dataProcessor: T, fileName: string): NCServer[T] =
+    echo(fmt("ncInitServer({fileName})"))
 
     let config = ncLoadConfig(fileName)
-    initServer(dataProcessor, config)
+    ncInitServer(dataProcessor, config)
 

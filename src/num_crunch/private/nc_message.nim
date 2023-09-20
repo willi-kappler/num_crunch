@@ -169,3 +169,5 @@ proc ncSendMessageToServer*(serverSocket: Socket, key: Key, serverMessage: NCMes
     let data = toFlatty(serverMessage)
 
     ncSendMessage(serverSocket, key, data)
+
+
