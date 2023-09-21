@@ -1,5 +1,6 @@
 
 
+# Local imports
 import nc_nodeid
 
 type
@@ -152,5 +153,6 @@ proc collectData*[T](self: var NCArray2D[T], nodeId: NCNodeId, data: seq[T]) =
                 self.tileStatus[i].status = NCTileStatusKind.done
                 self.setTileXY(self.tileStatus[i].tileX, self.tileStatus[i].tileY, data)
                 break
+
 
 
