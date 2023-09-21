@@ -1,6 +1,6 @@
 
 
-import private/nc_nodeid
+import nc_nodeid
 
 type
     NCTileStatusKind = enum
@@ -11,6 +11,8 @@ type
     NCTileStatus = object
         status: NCTileStatusKind
         nodeId: NCNodeId
+        tileX: uint32
+        tileY: uint32
 
     NCArray2D*[T] = object
         data: seq[T]
@@ -31,6 +33,15 @@ proc ncNewArray2D*[T](sizeX: uint32, sizeY: uint32, tileX: uint32, tileY: uint32
     result.totalSizeX = sizeX * tileX
     result.totalSizeY = sizeY * tileY
     result.tileStatus = newSeq[NCTileStatus](sizeX * sizeY)
+
+func getTileSize*[T](self: NCArray2D[T]): (uint32, uint32) =
+    (self.tileSizeX, self.tileSizeY)
+
+func getNumTiles*[T](self: NCArray2D[T]): (uint32, uint32) =
+    (self.numTilesX, self.numTilesY)
+
+func getTotalSize*[T](self: NCArray2D[T]): (uint32, uint32) =
+    (self.totalSizeX, self.totalSizeY)
 
 proc getXY*[T](self: NCArray2D[T], x: uint32, y: uint32): T =
     let offset = (y * self.totalSizeX) + x
@@ -107,5 +118,37 @@ func isFinished*[T](self: NCArray2D[T]): bool =
             result = false
             break
 
+proc nextUnprocessedTile*[T](self: var NCArray2D[T], nodeID: NCNodeId): (uint32, uint32) =
+    var x: uint32 = 0
+    var y: uint32 = 0
+
+    for i in 0..(self.tileStatus.len() - 1):
+        if self.tileStatus[i].status == NCTileStatusKind.unprocessed:
+            self.tileStatus[i].status = NCTileStatusKind.inProgress
+            self.tileStatus[i].nodeId = nodeId
+            self.tileStatus[i].tileX = x
+            self.tileStatus[i].tileY = y
+            break
+
+        x = x + 1
+        if x == self.tileSizeX:
+            x = 0
+            y = y + 1
+
+    return (x, y)
+
+proc maybeDeadNode*[T](self: NCArray2D[T], nodeId: NCNodeId) =
+    for i in 0..(self.tileStatus.len() - 1):
+        if self.tileStatus[i].nodeId == nodeId:
+            # This tile needs to be processed by another node
+            self.tileStatus[i].status = NCTileStatusKind.unprocessed
+            # Done, since a node can only process one tile at a time
+            break
+
+proc collectData*[T](self: NCArray2D[T], nodeId: NCNodeId, data: seq[T]) =
+    for i in 0..(self.tileStatus.len() - 1):
+        if self.tileStatus[i].nodeId == nodeId:
+            self.tileStatus[i].status = NCTileStatusKind.done
+            self.setTileXY(self.tileStatus.tileX, self.tileStatus.tileY, data)
 
 
