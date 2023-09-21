@@ -1,5 +1,10 @@
 
 
+
+# Nim std imports
+from std/strformat import fmt
+
+# Local imports
 import num_crunch/nc_array2d
 import num_crunch/nc_nodeid
 
@@ -55,8 +60,6 @@ block:
         tileSizeY: uint32 = 13
         numTilesX: uint32  = 4
         numTilesY: uint32 = 5
-        sizeX: uint32 = tileSizeX * numTilesX
-        sizeY: uint32 = tileSizeY * numTilesY
         numTiles: uint32 = numTilesX * numTilesY
 
     var a2d = ncNewArray2D[uint8](tileSizeX, tileSizeY, numTilesX, numTilesY)
@@ -68,9 +71,17 @@ block:
     # Create some test node id
     let nodeId = ncNewNodeId()
 
-    for i in 1..numTiles:
+    for i in 0..numTiles:
         discard a2d.nextUnprocessedTile(nodeId)
-    
-    
-    
-    
+
+    # Still not finished yet:
+    assert(not a2d.isFinished())
+
+    let firstTile = a2d.getTileXY(0, 0)
+
+    for i in 0..numTiles:
+        a2d.collectData(nodeId, firstTile)
+
+    # Now the work is done:
+    assert(a2d.isFinished())
+
