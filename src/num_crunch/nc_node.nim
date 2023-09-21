@@ -12,7 +12,7 @@ from chacha20 import Key
 
 # Local imports
 import private/nc_message
-import private/nc_nodeid
+import nc_nodeid
 import nc_config
 
 type

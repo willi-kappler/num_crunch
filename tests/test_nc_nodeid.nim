@@ -1,17 +1,17 @@
 
-import num_crunch/private/nc_nodeid
+import num_crunch/nc_nodeid
 
 block:
     # Test for not equal
-    let a = NCNodeID(id: "100")
-    let b = NCNodeID(id: "200")
+    let a = ncNodeWithId("100")
+    let b = ncNodeWithId("200")
 
     assert(a != b)
 
 block:
     # Test for equal
-    let a = NCNodeID(id: "150")
-    let b = NCNodeID(id: "150")
+    let a = ncNodeWithId("150")
+    let b = ncNodeWithId("150")
 
     assert(a == b)
 

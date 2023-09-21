@@ -17,7 +17,7 @@ from flatty import fromFlatty, toFlatty
 
 # Local imports
 import private/nc_message
-import private/nc_nodeid
+import nc_nodeid
 import nc_config
 
 type
@@ -147,7 +147,7 @@ proc handleClient(tp: (ptr NCServer, Socket)) {.thread.} =
     of NCServerMsgKind.heartbeat:
         echo("Node sends heartbeat")
 
-        for i in 0..self.nodes.len():
+        for i in 0..(self.nodes.len() - 1):
             if self.nodes[i][0] == serverMessage.id:
                 self.nodes[i][1] = getTime()
                 break

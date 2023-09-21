@@ -2,7 +2,7 @@
 from std/os import getAppDir
 
 import num_crunch/nc_server
-import num_crunch/private/nc_nodeid
+import num_crunch/nc_nodeid
 
 type
     MyDP = object

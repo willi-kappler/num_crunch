@@ -10,7 +10,7 @@ from flatty import fromFlatty, toFlatty
 from std/endians import bigEndian32
 
 # Internal imports
-import nc_nodeid
+import ../nc_nodeid
 
 type
     NCNodeMsgKind* = enum

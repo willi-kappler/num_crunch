@@ -25,10 +25,10 @@ task(checkAll, "run 'nim check' on all source files"):
     exec("nim check nc_common.nim")
     exec("nim check nc_config.nim")
     exec("nim check nc_node.nim")
+    exec("nim check nc_nodeid.nim")
     exec("nim check nc_server.nim")
 
     cd("private/")
     # Check private modules:
     exec("nim check nc_message.nim")
-    exec("nim check nc_nodeid.nim")
 
