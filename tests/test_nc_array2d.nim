@@ -71,7 +71,7 @@ block:
     # Create some test node id
     let nodeId = ncNewNodeId()
 
-    for i in 0..numTiles:
+    for i in 1..numTiles:
         discard a2d.nextUnprocessedTile(nodeId)
 
     # Still not finished yet:
@@ -79,7 +79,7 @@ block:
 
     let firstTile = a2d.getTileXY(0, 0)
 
-    for i in 0..numTiles:
+    for i in 1..numTiles:
         a2d.collectData(nodeId, firstTile)
 
     # Now the work is done:
