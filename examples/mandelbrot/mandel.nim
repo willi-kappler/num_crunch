@@ -7,6 +7,9 @@ from std/strformat import fmt
 # Local imports
 import ../../src/num_crunch/nc_config
 
+import m_server
+import m_node
+
 if isMainModule:
     var runServer = false
     let logger = newFileLogger("mandel.log", fmtStr=verboseFmtStr)
