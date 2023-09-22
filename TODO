@@ -1,7 +1,13 @@
 
+TODO:
+
 - Make heartbeat tolerance configurable
-- Finish server code
-- Finish node code
 - Add more test cases
 - Add more examples
+- Use log() instead of echo() for debug outputs throughout the code
+
+Done:
+# Finish server code
+# Finish node code
+
 
