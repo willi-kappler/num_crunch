@@ -9,7 +9,7 @@ type
         data: NCArray2D[uint32]
 
 proc isFinished*(self: MandelServerDP): bool =
-    true
+    self.data.isFinished()
 
 proc getNewData*(self: var MandelServerDP, n: NCNodeID): seq[byte] =
     @[]
@@ -18,7 +18,7 @@ proc collectData*(self: var MandelServerDP, data: seq[byte]) =
     discard
 
 proc maybeDeadNode*(self: var MandelServerDP, n: NCNodeID) =
-    discard
+    self.data.maybeDeadNode(n)
 
 proc saveData*(self: var MandelServerDP) =
     discard
