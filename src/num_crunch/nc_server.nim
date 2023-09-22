@@ -32,7 +32,7 @@ type
         dataProcessor: T
         quit: Atomic[bool]
 
-    ClientThread = Thread[(ptr NCServer, Socket)]
+    ClientThread[T] = Thread[(ptr NCServer[T], Socket)]
 
     NCDPServer = concept dp
         dp.isFinished() is bool
@@ -42,7 +42,7 @@ type
         dp.saveData()
 
 
-proc checkNodesHeartbeat(self: ptr NCServer) {.thread.} =
+proc checkNodesHeartbeat[T](self: ptr NCServer[T]) {.thread.} =
     echo("NCServer.checkNodesHeartbeat()")
 
     # Convert from seconds to miliseconds
@@ -61,7 +61,7 @@ proc checkNodesHeartbeat(self: ptr NCServer) {.thread.} =
         ncSendMessageToServer(serverSocket, self.key, heartbeatMessage)
         serverSocket.close()
 
-proc createNewNodeId(self: ptr NCServer): NCNodeID =
+proc createNewNodeId[T](self: ptr NCServer[T]): NCNodeID =
     echo("NCServer.createNewNodeId()")
 
     result = ncNewNodeId()
@@ -75,7 +75,7 @@ proc createNewNodeId(self: ptr NCServer): NCNodeID =
                 result = ncNewNodeId()
                 quit = false
 
-proc validNodeId(self: ptr NCServer, id: NCNodeID): bool =
+proc validNodeId[T](self: ptr NCServer[T], id: NCNodeID): bool =
     echo("NCServer.validNodeId(), id: ", id)
 
     result = false
@@ -85,7 +85,7 @@ proc validNodeId(self: ptr NCServer, id: NCNodeID): bool =
             result = true
             break
 
-proc handleClient(tp: (ptr NCServer, Socket)) {.thread.} =
+proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
     echo("NCServer.handleClient()")
 
     let self = tp[0]
@@ -115,7 +115,7 @@ proc handleClient(tp: (ptr NCServer, Socket)) {.thread.} =
 
         # Create a new node id and send it to the node
         let newId = self.createNewNodeId()
-        let data = toFlatty(newId)
+        let data = ncStrToBytes(toFlatty(newId))
         let message = NCMessageToNode(kind: NCNodeMsgKind.welcome, data: data)
         ncSendMessageToNode(client, self.key, message)
 
@@ -155,12 +155,12 @@ proc handleClient(tp: (ptr NCServer, Socket)) {.thread.} =
     of NCServerMsgKind.checkHeartbeat:
         echo("Check heartbeat times for all inodes")
 
-        const maxDuration = initDuration(seconds = int64(self.heartbeatTimeout))
+        let maxDuration = initDuration(seconds = int64(self.heartbeatTimeout))
 
         let currentTime = getTime()
 
         for n in self.nodes:
-            if currentTime - n[1] > maxDuration:
+            if maxDuration < (currentTime - n[1]):
                 echo(fmt("Node is not sending heartbeat message: {n[0]}"))
                 # Let data processor know that this node seems dead
                 self.dataProcessor.maybeDeadNode(n[0])
@@ -176,15 +176,15 @@ proc handleClient(tp: (ptr NCServer, Socket)) {.thread.} =
     release(self.serverLock)
     client.close()
 
-proc runServer*(self: var NCServer) =
+proc runServer*[T](self: var NCServer[T]) =
     echo("NCServer.runServer()")
 
-    var hbThreadId: Thread[ptr NCServer]
+    var hbThreadId: Thread[ptr NCServer[T]]
 
     createThread(hbThreadId, checkNodesHeartbeat, unsafeAddr(self))
 
-    var clientThreadId: ClientThread
-    var clients: Deque[ClientThread]
+    var clientThreadId: ClientThread[T]
+    var clients: Deque[ClientThread[T]]
 
     initLock(self.serverLock)
 

@@ -9,6 +9,7 @@ from std/strformat import fmt
 
 # External imports
 from chacha20 import Key
+from flatty import fromFlatty
 
 # Local imports
 import private/nc_message
@@ -34,7 +35,9 @@ proc sendHeartbeat(self: ptr NCNode) {.thread.} =
 
     let timeOut = uint(self.heartbeatTimeout)
 
-    let heartbeatMessage = NCMessageToServer(kind: NCServerMsgKind.heartbeat)
+    let heartbeatMessage = NCMessageToServer(
+        kind: NCServerMsgKind.heartbeat,
+        id: self.nodeId)
     let nodeSocket = newSocket()
 
     while not self.quit.load():
@@ -48,11 +51,6 @@ proc sendHeartbeat(self: ptr NCNode) {.thread.} =
 proc runNode*(self: var NCNode) =
     echo("NCNode.runNode()")
 
-    var hbThreadId: Thread[ptr NCNode]
-    var nodeId: NCNodeID
-
-    createThread(hbThreadId, sendHeartbeat, unsafeAddr(self))
-
     let nodeSocket = newSocket()
     let registerMessage = NCMessageToServer(kind: NCServerMsgKind.registerNewNode)
     nodeSocket.connect(self.serverAddr, self.serverPort)
@@ -62,8 +60,10 @@ proc runNode*(self: var NCNode) =
 
     case serverResponse.kind:
     of NCNodeMsgKind.welcome:
-        echo("Got new node id: ", serverResponse.id)
-        nodeId = serverResponse.id
+        let data = ncBytesToStr(serverResponse.data)
+        let nodeId = fromFlatty(data, NCNodeID)
+        echo("Got new node id: ", nodeId)
+        self.nodeId = nodeId
 
     of NCNodeMsgKind.quit:
         echo("All work is done, will exit now")
@@ -74,7 +74,12 @@ proc runNode*(self: var NCNode) =
         echo("Unknown response: ", serverResponse.kind)
         return
 
-    let needDataMessage = NCMessageToServer(kind: NCServerMsgKind.needsData, id = nodeId)
+    var hbThreadId: Thread[ptr NCNode]
+    createThread(hbThreadId, sendHeartbeat, unsafeAddr(self))
+
+    let needDataMessage = NCMessageToServer(
+        kind: NCServerMsgKind.needsData,
+        id: self.nodeId)
 
     while not self.quit.load():
         nodeSocket.connect(self.serverAddr, self.serverPort)
@@ -90,7 +95,9 @@ proc runNode*(self: var NCNode) =
         of NCNodeMsgKind.newData:
             echo("Got new data to process")
             let processedData = self.dataProcessor.processData(serverResponse.data)
-            let processedDataMessage = NCMessageToServer(kind: NCServerMsgKind.processedData, data: processedData)
+            let processedDataMessage = NCMessageToServer(
+                kind: NCServerMsgKind.processedData,
+                data: processedData)
             nodeSocket.connect(self.serverAddr, self.serverPort)
             ncSendMessageToServer(nodeSocket, self.key, processedDataMessage)
             nodeSocket.close()
