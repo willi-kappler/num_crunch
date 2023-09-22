@@ -6,6 +6,8 @@ from std/strformat import fmt
 
 # Local imports
 import ../../src/num_crunch/nc_config
+import ../../src/num_crunch/nc_node
+import ../../src/num_crunch/nc_server
 
 import m_server
 import m_node
@@ -33,8 +35,12 @@ if isMainModule:
 
     if runServer:
         info("Starting server")
-        #let server = ncInitServer(config)
+        let dataProcessor = initMandelServerDP()
+        var server = ncInitServer(dataProcessor, config)
+        server.runServer()
     else:
         info("Starting Node")
-        #let node = initNode(config)
+        let dataProcessor = initMandelNodeDP()
+        var node = ncInitNode(dataProcessor, config)
+        node.runNode()
 
