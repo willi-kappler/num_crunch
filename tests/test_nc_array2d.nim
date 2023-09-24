@@ -26,32 +26,32 @@ block:
 
     # Test array fill
     a2d.fillArray(5)
-    for y in 0..(sizeY - 1):
-        for x in 0..(sizeX - 1):
+    for y in 0..<sizeY:
+        for x in 0..<sizeX:
             assert(a2d.getXY(x, y) == 5)
 
     # Test setting single value
     a2d.setXY(0, 0, 12)
     assert(a2d.getXY(0, 0) == 12)
-    for x in 1..(sizeX - 1):
+    for x in 1..<sizeX:
         assert(a2d.getXY(x, 0) == 5)
-    for y in 1..(sizeY - 1):
-        for x in 0..(sizeX - 1):
+    for y in 1..<sizeY:
+        for x in 0..<sizeX:
             assert(a2d.getXY(x, y) == 5)
 
     # Test filling tile
     a2d.fillTile(0, 0, 133)
     # Check the tile
-    for y in 0..(tileSizeY - 1):
-        for x in 0..(tileSizeX - 1):
+    for y in 0..<tileSizeY:
+        for x in 0..<tileSizeX:
             assert(a2d.getXY(x, y) == 133)
     # Check the rest
-    for y in 0..(tileSizeY - 1):
-        for x in tileSizeX..(sizeX - 1):
+    for y in 0..<tileSizeY:
+        for x in tileSizeX..<sizeX:
             assert(a2d.getXY(x, y) == 5)
 
-    for y in tileSizeY..(sizeY - 1):
-        for x in 0..(sizeX - 1):
+    for y in tileSizeY..<sizeY:
+        for x in 0..<sizeX:
             assert(a2d.getXY(x, y) == 5)
 
 block:
@@ -71,7 +71,7 @@ block:
     # Create some test node id
     let nodeId = ncNewNodeId()
 
-    for i in 1..numTiles:
+    for i in 0..<numTiles:
         discard a2d.nextUnprocessedTile(nodeId)
 
     # Still not finished yet:
@@ -79,7 +79,7 @@ block:
 
     let firstTile = a2d.getTileXY(0, 0)
 
-    for i in 1..numTiles:
+    for i in 0..<numTiles:
         a2d.collectData(nodeId, firstTile)
 
     # Now the work is done:

@@ -147,7 +147,7 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
     of NCServerMsgKind.heartbeat:
         echo("Node sends heartbeat")
 
-        for i in 0..(self.nodes.len() - 1):
+        for i in 0..<self.nodes.len():
             if self.nodes[i][0] == serverMessage.id:
                 self.nodes[i][1] = getTime()
                 break

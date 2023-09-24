@@ -66,13 +66,13 @@ proc getTileXY*[T](self: NCArray2D[T], ax: uint32, ay: uint32): seq[T] =
     let offsetX = self.tileSizeX * ax
     let offset = offsetX + offsetY
 
-    for ty in 0..(self.tileSizeY - 1):
+    for ty in 0..<self.tileSizeY:
         # Offset inside tile
         let ii = ty * self.tileSizeX
         # Offset inside array
         let jj = offset + (ty * self.totalSizeX)
 
-        for tx in 0..(self.tileSizeX - 1):
+        for tx in 0..<self.tileSizeX:
             let i = ii + tx
             let j = jj + tx
             result[i] = self.data[j]
@@ -83,22 +83,22 @@ proc setTileXY*[T](self: var NCArray2D[T], ax: uint32, ay: uint32, tile: seq[T])
     let offsetX = self.tileSizeX * ax
     let offset = offsetX + offsetY
 
-    for ty in 0..(self.tileSizeY - 1):
+    for ty in 0..<self.tileSizeY:
         # Offset inside tile
         let ii = ty * self.tileSizeX
         # Offset inside array
         let jj = offset + (ty * self.totalSizeX)
 
-        for tx in 0..(self.tileSizeX - 1):
+        for tx in 0..<self.tileSizeX:
             let i = ii + tx
             let j = jj + tx
             self.data[j] = tile[i]
 
 proc fillArray*[T](self: var NCArray2D[T], v: T) =
     echo("NCArray2D.fillArray()")
-    for y in 0..(self.totalSizeY - 1):
+    for y in 0..<self.totalSizeY:
         let ii = y * self.totalSizeX
-        for x in 0..(self.totalSizeX - 1):
+        for x in 0..<self.totalSizeX:
             let i = ii + x
             self.data[i] = v
 
@@ -108,11 +108,11 @@ proc fillTile*[T](self: var NCArray2D[T], ax: uint32, ay: uint32, v: T) =
     let offsetX = self.tileSizeX * ax
     let offset = offsetX + offsetY
 
-    for ty in 0..(self.tileSizeY - 1):
+    for ty in 0..<self.tileSizeY:
         # Offset inside array
         let i = offset + (ty * self.totalSizeX)
 
-        for tx in 0..(self.tileSizeX - 1):
+        for tx in 0..<self.tileSizeX:
             let i = i + tx
             self.data[i] = v
 
@@ -132,7 +132,7 @@ proc nextUnprocessedTile*[T](self: var NCArray2D[T], nodeId: NCNodeId): (uint32,
     var x: uint32 = 0
     var y: uint32 = 0
 
-    for i in 0..(self.tileStatus.len() - 1):
+    for i in 0..<self.tileStatus.len():
         if self.tileStatus[i].status == NCTileStatusKind.unprocessed:
             self.tileStatus[i].status = NCTileStatusKind.inProgress
             self.tileStatus[i].nodeId = nodeId
@@ -148,7 +148,7 @@ proc nextUnprocessedTile*[T](self: var NCArray2D[T], nodeId: NCNodeId): (uint32,
 
 proc maybeDeadNode*[T](self: var NCArray2D[T], nodeId: NCNodeId) =
     echo(fmt("NCArray2D.maybeDeadNode(), {nodeId}"))
-    for i in 0..(self.tileStatus.len() - 1):
+    for i in 0..<self.tileStatus.len():
         if self.tileStatus[i].nodeId == nodeId:
             if self.tileStatus[i].status == NCTileStatusKind.inProgress:
                 # This tile needs to be processed by another node
@@ -158,7 +158,7 @@ proc maybeDeadNode*[T](self: var NCArray2D[T], nodeId: NCNodeId) =
 
 proc collectData*[T](self: var NCArray2D[T], nodeId: NCNodeId, data: seq[T]) =
     echo(fmt("NCArray2D.collectData(), {nodeId}"))
-    for i in 0..(self.tileStatus.len() - 1):
+    for i in 0..<self.tileStatus.len():
         if self.tileStatus[i].nodeId == nodeId:
             if self.tileStatus[i].status == NCTileStatusKind.inProgress:
                 self.tileStatus[i].status = NCTileStatusKind.done
