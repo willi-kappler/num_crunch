@@ -20,9 +20,22 @@ block:
 
 block:
     # Test init with invalid filename
+    # Expect IOError, file not found
     const filename = "unknown_file.ini"
     let dataProcessor = MyDP()
 
     doAssertRaises(IOError):
         let node = ncInitNode(dataProcessor, filename)
+
+block:
+    # Test first run without a server
+    # Expect OSError, connection refused
+    let currentDir = getAppDir()
+    let filename = currentDir & "/config1.ini"
+    let dataProcessor = MyDP()
+
+    var node = ncInitNode(dataProcessor, filename)
+
+    doAssertRaises(OSError):
+        node.runNode()
 
