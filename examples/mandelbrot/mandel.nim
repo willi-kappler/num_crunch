@@ -53,5 +53,5 @@ if isMainModule:
         info("Starting Node")
         let dataProcessor = initMandelNodeDP()
         var node = ncInitNode(dataProcessor, config)
-        #node.runNode()
+        node.runNode()
 
