@@ -42,7 +42,7 @@ func ncIntToStr*(i: uint32): string =
     bigEndian32(unsafeAddr(result[0]), unsafeAddr(i))
 
 func ncStrToBytes*(s: string): seq[byte] =
-    @(s.toOpenArrayByte(0, s.high))
+    @(s.toOpenArrayByte(0, s.high()))
 
 func ncBytesToStr*(s: seq[byte]): string =
     let l = s.len()
@@ -62,14 +62,17 @@ func ncStrToNonce(s: string): ptr Nonce =
 
 proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
     echo("ncDecodeMessage()")
+    #echo("ncDecodeMessage(), data len: ", data.len())
 
     # Decrypt data using chacha20
     # https://git.sr.ht/~ehmry/chacha20
     let dataDecrypted = chacha20(data, key, nonce)
+    #echo("ncDecodeMessage(), data decrypted")
 
     # Decompress data using supersnappy
     # https://github.com/guzba/supersnappy
     let dataUncompressed = uncompress(dataDecrypted)
+    #echo("ncDecodeMessage(), data uncompressed")
 
     return dataUncompressed
 
@@ -116,41 +119,54 @@ proc ncReceiveMessageFromServer*(serverSocket: Socket, key: Key): NCMessageFromS
 
 proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
     echo("ncEncodeMessage()")
+    #echo("ncEncodeMessage(), data len: ", data.len())
+    #echo("ncEncodeMessage(), key: ", key)
+    #echo("ncEncodeMessage(), nonce: ", nonce)
 
     # Compress data using supersnappy
     # https://github.com/guzba/supersnappy
     let dataCompressed = compress(data)
+    #echo("ncEncodeMessage(), data compressed")
+    #echo("ncEncodeMessage(), dataCompressed, type: ", type(dataCompressed))
+    #echo("ncEncodeMessage(), data len: ", dataCompressed.len())
 
     # Encrypt data using chacha20
     # https://git.sr.ht/~ehmry/chacha20
-    return chacha20(dataCompressed, key, nonce)
+    result = chacha20(dataCompressed, key, nonce)
+    #echo("ncEncodeMessage(), data encrypted")
 
 proc ncSendMessage(socket: Socket, key: Key, data: string) =
     echo("ncSendMessage()")
+    #echo("ncSendMessage(), data len: ", data.len())
 
     var nonce: Nonce
 
-    for i in 0..nonce.len():
+    for i in 0..<nonce.len():
         nonce[i] = byte(rand(255))
 
+    #echo("ncSendMessage(), nonce is ready")
     let dataEncrypted = ncEncodeMessage(data, key, nonce)
+    #echo("ncSendMessage(), data encrypted")
 
     let dataLen = uint32(dataEncrypted.len())
     # Convert binary data into integer value
     let dataLenStr = ncIntToStr(dataLen)
     # bigEndian32(unsafeAddr(dataLenStr), unsafeAddr(dataLen))
+    #echo("ncSendMessage(), string conversion done")
 
     # Send data length to socket
     socket.send(dataLenStr)
+    #echo("ncSendMessage(), data length sent")
 
     let nonceStr = ncNonceToStr(nonce)
-    # copyMem(unsafeAddr(nonceStr[0]), unsafeAddr(nonce[0]), nonce.len())
 
     # Send nonce to socket
     socket.send(nonceStr)
+    #echo("ncSendMessage(), nonce sent")
 
     # Send the encrypted data to socket
     socket.send(dataEncrypted)
+    #echo("ncSendMessage(), encrypted data sent")
 
 proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageToNode) =
     echo("ncSendNodeMessage()")
