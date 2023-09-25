@@ -56,3 +56,14 @@ block:
     doAssertRaises(SnappyError):
         let decodedData = ncDecodeMessage(encodedData, key2[], nonce[])
         assert(data != decodedData)
+
+block:
+    # Test integer conversion:
+    let i: uint32 = 35
+    let s = ncIntToStr(i)
+    assert(s.len() == 4)
+
+    let j = ncStrToInt(s)
+    assert( j == i)
+
+
