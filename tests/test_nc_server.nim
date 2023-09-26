@@ -10,7 +10,8 @@ type
 
 proc isFinished(self: var MyDP): bool =
     echo("isFinished(), testcounter: ", self.testCounter)
-    self.testCounter = self.testCounter - 1
+    if self.testcounter > 0:
+        self.testCounter = self.testCounter - 1
     result = (self.testCounter == 0)
 
 proc getNewData(self: var MyDP, n: NCNodeID): seq[byte] =
