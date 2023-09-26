@@ -62,7 +62,6 @@ proc checkNodesHeartbeat[T](self: ptr NCServer[T]) {.thread.} =
             serverSocket.connect("127.0.0.1", self.serverPort)
             ncSendMessageToServer(serverSocket, self.key, heartbeatMessage)
             serverSocket.close()
-            echo("NCServer.checkNodesHeartbeat(), done")
         except IOError:
             echo("NCServer.checkNodesHeartbeat(), server doesn't respond, will exit now!")
             break
@@ -97,20 +96,23 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
     let self = tp[0]
     let client = tp[1]
 
-    echo("NCServer.handleClient(), check pointers")
+    acquire(self.serverLock)
 
-    assert(self != nil)
-    assert(client != nil)
+    try:
+        let (clientAddr, clientPort) = client.getPeerAddr()
+        echo(fmt("NCServer.handleClient(), Connection from: {clientAddr}, port: {clientPort.uint16}"))
+    except OSError:
+        echo("NCServer.handleClient(), socket closed, exit thread")
 
-    echo("NCServer.handleClient(), pointers OK")
+        if self.dataProcessor.isFinished():
+            echo("NCServer.handleClient(), Work is done, exit now!")
+            self.quit.store(true)
 
-    let (clientAddr, clientPort) = client.getPeerAddr()
-    echo(fmt("NCServer.handleClient(), Connection from: {clientAddr}, port: {clientPort.uint16}"))
+        release(self.serverLock)
+
+        return
 
     let serverMessage = ncReceiveMessageFromNode(client, self.key)
-
-
-    acquire(self.serverLock)
 
     if self.dataProcessor.isFinished():
         echo("NCServer.handleClient(), Work is done, exit now!")
@@ -197,8 +199,9 @@ proc runServer*[T](self: var NCServer[T]) =
 
     createThread(hbThreadId, checkNodesHeartbeat, unsafeAddr(self))
 
-    var clientThreadId: ClientThread[T]
-    var clients: Deque[ClientThread[T]]
+    const maxThreads = 16
+    var clientThreads: array[0..maxThreads, ClientThread[T]]
+    var assignedThreads: array[0..maxThreads, bool]
 
     initLock(self.serverLock)
 
@@ -211,20 +214,27 @@ proc runServer*[T](self: var NCServer[T]) =
 
     while not self.quit.load():
         serverSocket.acceptAddr(client, address)
-        echo("runServer(), got new connection from node")
-        let selfPtr = unsafeAddr(self)
-        assert(selfPtr != nil)
-        createThread(clientThreadId, handleClient, (selfPtr, client))
-        echo("runServer(), new thread created")
-        let newThread = move(clientThreadId)
-        clients.addLast(newThread)
-        echo("runServer(), thread added to client list")
+        echo("NCServer.runServer(), got new connection from node")
 
-        # Wait until there are at least two nodes
-        if clients.len() > 1:
-            if not clients[0].running():
-                # Avoid that sequence gets too large
-                joinThread(clients.popFirst())
+        let selfPtr = unsafeAddr(self)
+
+        # Check if some threads are already done
+        # and mark them as not assigned
+        for i in 0..<maxThreads:
+            if assignedThreads[i]:
+                if not running(clientThreads[i]):
+                    joinThread(clientThreads[i])
+                    assignedThreads[i] = false
+
+        # Check if some threads are not assigned yet
+        # and use them to process the new client connection
+        for i in 0..<maxThreads:
+            if not assignedThreads[i]:
+                createThread(clientThreads[i], handleClient, (selfPtr, client))
+                assignedThreads[i] = true
+                break
+
+        echo("NCServer.runServer(), new thread created")
 
     acquire(self.serverLock)
     # Save the user data as soon as possible
@@ -233,18 +243,18 @@ proc runServer*[T](self: var NCServer[T]) =
 
     serverSocket.close()
 
-    echo("Waiting for other threads to finish...")
-    sleep(10*1000) # Wait 10 seconds to give the other threads a chance to finish
+    echo("NCServer.runServer(), Waiting for other threads to finish...")
 
-    if not running(hbThreadId):
-        joinThread(hbThreadId)
+    joinThread(hbThreadId)
+    echo("NCServer.runServer(), hearbeat thread finished")
 
-    for th in clients.items():
-        if not running(th):
-            joinThread(th)
+    for i in 0..<maxThreads:
+        if assignedThreads[i]:
+            joinThread(clientThreads[i])
+    echo("NCServer.runServer(), other threads finished")
 
     deinitLock(self.serverLock)
-    echo("Will exit now!")
+    echo("NCServer.runServer(), Will exit now!")
 
 proc ncInitServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): NCServer[T] =
     echo("ncInitServer(config)")
