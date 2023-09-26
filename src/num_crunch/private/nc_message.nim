@@ -2,6 +2,7 @@
 # Nim std imports
 import std/net
 from std/random import rand
+from std/logging import debug
 
 # External imports
 from chacha20 import chacha20, Key, Nonce
@@ -61,7 +62,7 @@ func ncStrToNonce(s: string): ptr Nonce =
     result = cast[ptr(Nonce)](unsafeAddr(s[0]))
 
 proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
-    echo("ncDecodeMessage()")
+    debug("ncDecodeMessage()")
     #echo("ncDecodeMessage(), data len: ", data.len())
 
     # Decrypt data using chacha20
@@ -77,7 +78,7 @@ proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
     return dataUncompressed
 
 proc ncReceiveMessage(socket: Socket, key: Key): string =
-    echo("ncReceiveMessage()")
+    debug("ncReceiveMessage()")
 
     # Read the length of the whole data set (4 bytes)
     let dataLenStr = socket.recv(4)
@@ -96,7 +97,7 @@ proc ncReceiveMessage(socket: Socket, key: Key): string =
     return ncDecodeMessage(dataEncrypted, key, nonce[])
 
 proc ncReceiveMessageFromNode*(nodeSocket: Socket, key: Key): NCMessageFromNode =
-    echo("ncReceiveNodeMessage()")
+    debug("ncReceiveNodeMessage()")
 
     let message = ncReceiveMessage(nodeSocket, key)
 
@@ -107,7 +108,7 @@ proc ncReceiveMessageFromNode*(nodeSocket: Socket, key: Key): NCMessageFromNode 
     return nodeMessage
 
 proc ncReceiveMessageFromServer*(serverSocket: Socket, key: Key): NCMessageFromServer =
-    echo("ncReceiveServerMessage()")
+    debug("ncReceiveServerMessage()")
 
     let message = ncReceiveMessage(serverSocket, key)
 
@@ -118,7 +119,7 @@ proc ncReceiveMessageFromServer*(serverSocket: Socket, key: Key): NCMessageFromS
     return serverMessage
 
 proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
-    echo("ncEncodeMessage()")
+    debug("ncEncodeMessage()")
     #echo("ncEncodeMessage(), data len: ", data.len())
     #echo("ncEncodeMessage(), key: ", key)
     #echo("ncEncodeMessage(), nonce: ", nonce)
@@ -136,7 +137,7 @@ proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
     #echo("ncEncodeMessage(), data encrypted")
 
 proc ncSendMessage(socket: Socket, key: Key, data: string) =
-    echo("ncSendMessage()")
+    debug("ncSendMessage()")
     #echo("ncSendMessage(), data len: ", data.len())
 
     var nonce: Nonce
@@ -169,7 +170,7 @@ proc ncSendMessage(socket: Socket, key: Key, data: string) =
     #echo("ncSendMessage(), encrypted data sent")
 
 proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageToNode) =
-    echo("ncSendNodeMessage()")
+    debug("ncSendNodeMessage()")
 
     # Serialize using Flatty
     # https://github.com/treeform/flatty
@@ -178,7 +179,7 @@ proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageTo
     ncSendMessage(nodeSocket, key, data)
 
 proc ncSendMessageToServer*(serverSocket: Socket, key: Key, serverMessage: NCMessageToServer) =
-    echo("ncSendServerMessage()")
+    debug("ncSendServerMessage()")
 
     # Serialize using Flatty
     # https://github.com/treeform/flatty

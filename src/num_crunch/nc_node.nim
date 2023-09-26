@@ -6,6 +6,7 @@ import std/atomics
 
 from std/os import sleep
 from std/strformat import fmt
+from std/logging import debug
 
 # External imports
 from chacha20 import Key
@@ -31,9 +32,9 @@ type
         dp.processData(type seq[byte]) is seq[byte]
 
 proc sendHeartbeat(self: ptr NCNode) {.thread.} =
-    echo("NCNode.sendHeartbeat()")
+    debug("NCNode.sendHeartbeat()")
 
-    let timeOut = uint(self.heartbeatTimeout)
+    let timeOut = uint(self.heartbeatTimeout * 1000)
 
     let heartbeatMessage = NCMessageToServer(
         kind: NCServerMsgKind.heartbeat,
@@ -49,7 +50,7 @@ proc sendHeartbeat(self: ptr NCNode) {.thread.} =
         nodeSocket.close()
 
 proc runNode*(self: var NCNode) =
-    echo("NCNode.runNode()")
+    debug("NCNode.runNode()")
 
     let nodeSocket = newSocket()
     let registerMessage = NCMessageToServer(kind: NCServerMsgKind.registerNewNode)
@@ -62,16 +63,16 @@ proc runNode*(self: var NCNode) =
     of NCNodeMsgKind.welcome:
         let data = ncBytesToStr(serverResponse.data)
         let nodeId = fromFlatty(data, NCNodeID)
-        echo("Got new node id: ", nodeId)
+        debug("Got new node id: ", nodeId)
         self.nodeId = nodeId
 
     of NCNodeMsgKind.quit:
-        echo("All work is done, will exit now")
+        debug("All work is done, will exit now")
         self.quit.store(true)
         return
 
     else:
-        echo("Unknown response: ", serverResponse.kind)
+        debug("Unknown response: ", serverResponse.kind)
         return
 
     var hbThreadId: Thread[ptr NCNode]
@@ -89,11 +90,11 @@ proc runNode*(self: var NCNode) =
 
         case serverResponse.kind:
         of NCNodeMsgKind.quit:
-            echo("All work is done, will exit now")
+            debug("All work is done, will exit now")
             self.quit.store(true)
 
         of NCNodeMsgKind.newData:
-            echo("Got new data to process")
+            debug("Got new data to process")
             let processedData = self.dataProcessor.processData(serverResponse.data)
             let processedDataMessage = NCMessageToServer(
                 kind: NCServerMsgKind.processedData,
@@ -103,20 +104,19 @@ proc runNode*(self: var NCNode) =
             nodeSocket.close()
 
         else:
-            echo("Unknown response: ", serverResponse.kind)
+            debug("Unknown response: ", serverResponse.kind)
             self.quit.store(true)
 
-    echo("Waiting for other thread to finish...")
+    debug("Waiting for other thread to finish...")
     # Try to join the heartbeat thread
-    sleep(10*1000) # Wait 10 seconds to give the thread a chance to finish
 
     if not hbThreadId.running():
         joinThread(hbThreadId)
 
-    echo("Will exit now!")
+    debug("Will exit now!")
 
 proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
-    echo("ncInitNode(config)")
+    debug("ncInitNode(config)")
 
     var ncNode = NCNode[T](dataProcessor: dataProcessor)
 
@@ -124,7 +124,7 @@ proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNo
     ncNode.serverAddr = ncConfig.serverAddr
     # Cast key from string to array[32, byte] for chacha20 (32 bytes)
     let keyStr = ncConfig.secretKey
-    echo(fmt("Key length: {keyStr.len()}"))
+    debug(fmt("Key length: {keyStr.len()}"))
     assert(keyStr.len() == len(Key), "Key must be exactly 32 bytes long")
     let key = cast[ptr(Key)](unsafeAddr(keyStr[0]))
 
@@ -134,7 +134,7 @@ proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNo
     return ncNode
 
 proc ncInitNode*[T: NCDPNode](dataProcessor: T, filename: string): NCNode[T] =
-    echo(fmt("ncInitNode({fileName})"))
+    debug(fmt("ncInitNode({fileName})"))
 
     let config = ncLoadConfig(fileName)
     ncInitNode(dataProcessor, config)
