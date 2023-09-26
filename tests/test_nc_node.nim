@@ -1,6 +1,11 @@
 
+
+# Nim std imports
+import std/logging
+
 from std/os import getAppDir
 
+# Local imports
 import num_crunch/nc_node
 
 type
@@ -10,7 +15,7 @@ type
 proc processData(self: var MyDP, input: seq[byte]): seq[byte] =
     self.data
 
-block:
+proc test1() =
     # Test init
     let currentDir = getAppDir()
     let filename = currentDir & "/config1.ini"
@@ -18,7 +23,7 @@ block:
 
     let node = ncInitNode(dataProcessor, filename)
 
-block:
+proc test2() =
     # Test init with invalid filename
     # Expect IOError, file not found
     const filename = "unknown_file.ini"
@@ -27,7 +32,7 @@ block:
     doAssertRaises(IOError):
         let node = ncInitNode(dataProcessor, filename)
 
-block:
+proc test3() =
     # Test first run without a server
     # Expect OSError, connection refused
     let currentDir = getAppDir()
@@ -38,4 +43,13 @@ block:
 
     doAssertRaises(OSError):
         node.runNode()
+
+when isMainModule:
+    let logger = newFileLogger("tests/test_nc_node.log", fmtStr=verboseFmtStr)
+    addHandler(logger)
+
+    test1()
+    test2()
+    test3()
+
 

@@ -1,12 +1,17 @@
 
-import std/assertions
 
+# Nim std imports
+import std/assertions
+import std/logging
+
+# External imports
 from chacha20 import Nonce, Key
 from supersnappy import SnappyError
 
+# Local imports
 import num_crunch/private/nc_message
 
-block:
+proc test1() =
     # Check normal function
     let data = "This is a secret message"
     let nonceStr = "123456789012"
@@ -21,7 +26,7 @@ block:
     let decodedData = ncDecodeMessage(encodedData, key[], nonce[])
     assert(data == decodedData)
 
-block:
+proc test2() =
     # Invalid nonce
     let data = "This is a secret message"
     let nonceStr1 = "123456789012"
@@ -39,7 +44,7 @@ block:
         let decodedData = ncDecodeMessage(encodedData, key[], nonce2[])
         assert(data != decodedData)
 
-block:
+proc test3() =
     # Invalid key
     let data = "This is a secret message"
     let nonceStr = "123456789012"
@@ -57,13 +62,21 @@ block:
         let decodedData = ncDecodeMessage(encodedData, key2[], nonce[])
         assert(data != decodedData)
 
-block:
+proc test4() =
     # Test integer conversion:
     let i: uint32 = 35
     let s = ncIntToStr(i)
     assert(s.len() == 4)
 
     let j = ncStrToInt(s)
-    assert( j == i)
+    assert(j == i)
 
+when isMainModule:
+    let logger = newFileLogger("tests/test_nc_message.log", fmtStr=verboseFmtStr)
+    addHandler(logger)
+
+    test1()
+    test2()
+    test3()
+    test4()
 

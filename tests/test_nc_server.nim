@@ -1,6 +1,11 @@
 
+
+
+# Nim std imports
+import std/logging
 from std/os import getAppDir
 
+# Local imports
 import num_crunch/nc_server
 import num_crunch/nc_nodeid
 
@@ -26,7 +31,7 @@ proc maybeDeadNode(self: var MyDP, n: NCNodeID) =
 proc saveData(self: var MyDP) =
     discard
 
-block:
+proc test1() =
     # Test init
     let currentDir = getAppDir()
     let filename = currentDir & "/config1.ini"
@@ -35,7 +40,7 @@ block:
     let server = ncInitServer(dataProcessor, filename)
     discard server
 
-block:
+proc test2() =
     # Test init with invalid filename
     # Expect IOError, file not found
     const filename = "unknown_file.ini"
@@ -45,7 +50,7 @@ block:
         let node = ncInitServer(dataProcessor, filename)
         discard node
 
-block:
+proc test3() =
     # Test with no node connected
     let currentDir = getAppDir()
     let filename = currentDir & "/config1.ini"
@@ -53,5 +58,13 @@ block:
 
     var server = ncInitServer(dataProcessor, filename)
     server.runServer()
+
+when isMainModule:
+    let logger = newFileLogger("tests/test_nc_server.log", fmtStr=verboseFmtStr)
+    addHandler(logger)
+
+    test1()
+    test2()
+    test3()
 
 

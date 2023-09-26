@@ -3,12 +3,13 @@
 
 # Nim std imports
 from std/strformat import fmt
+import std/logging
 
 # Local imports
 import num_crunch/nc_array2d
 import num_crunch/nc_nodeid
 
-block:
+proc test1() =
     const
         tileSizeX: uint32 = 10
         tileSizeY: uint32 = 10
@@ -54,7 +55,7 @@ block:
         for x in 0..<sizeX:
             assert(a2d.getXY(x, y) == 5)
 
-block:
+proc test2() =
     const
         tileSizeX: uint32 = 12
         tileSizeY: uint32 = 13
@@ -84,4 +85,11 @@ block:
 
     # Now the work is done:
     assert(a2d.isFinished())
+
+when isMainModule:
+    let logger = newFileLogger("tests/test_nc_array2d.log", fmtStr=verboseFmtStr)
+    addHandler(logger)
+
+    test1()
+    test2()
 
