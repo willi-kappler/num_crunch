@@ -5,6 +5,7 @@ TODO:
 - Add more test cases
 - Add more examples
 - Use log() instead of echo() for debug outputs throughout the code
+- In NCServer.handleClient(): Use lock only when needed
 
 Done:
 # Finish server code
