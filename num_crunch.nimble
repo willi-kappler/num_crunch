@@ -30,5 +30,6 @@ task(checkAll, "run 'nim check' on all source files"):
 
     cd("private/")
     # Check private modules:
+    exec("nim check nc_log.nim")
     exec("nim check nc_message.nim")
 
