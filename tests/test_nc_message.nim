@@ -10,6 +10,7 @@ from supersnappy import SnappyError
 
 # Local imports
 import num_crunch/private/nc_message
+import num_crunch/nc_log
 
 proc test1() =
     # Check normal function
@@ -73,10 +74,12 @@ proc test4() =
 
 when isMainModule:
     let logger = newFileLogger("tests/test_nc_message.log", fmtStr=verboseFmtStr)
-    addHandler(logger)
+    ncInitLogger(logger)
 
     test1()
     test2()
     test3()
     test4()
+
+    ncDeinitLogger()
 

@@ -4,17 +4,20 @@
 # Nim std imports
 import std/logging
 from std/os import getAppDir
+from std/strformat import fmt
 
 # Local imports
-import num_crunch/nc_server
+import num_crunch/nc_log
 import num_crunch/nc_nodeid
+import num_crunch/nc_server
+
 
 type
     MyDP = object
         testCounter: uint8
 
 proc isFinished(self: var MyDP): bool =
-    debug("isFinished(), testcounter: ", self.testCounter)
+    ncDebug(fmt("isFinished(), testcounter: {self.testCounter}"))
     if self.testcounter > 0:
         self.testCounter = self.testCounter - 1
     result = (self.testCounter == 0)
@@ -61,10 +64,11 @@ proc test3() =
 
 when isMainModule:
     let logger = newFileLogger("tests/test_nc_server.log", fmtStr=verboseFmtStr)
-    addHandler(logger)
+    ncInitLogger(logger)
 
     test1()
     test2()
     test3()
 
+    ncDeinitLogger()
 

@@ -4,7 +4,7 @@ from std/strformat import fmt
 
 # Local imports
 import nc_nodeid
-import private/nc_log
+import nc_log
 
 type
     NCTileStatusKind = enum

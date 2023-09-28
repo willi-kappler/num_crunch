@@ -12,10 +12,10 @@ from chacha20 import Key
 from flatty import fromFlatty
 
 # Local imports
-import private/nc_log
 import private/nc_message
-import nc_nodeid
 import nc_config
+import nc_log
+import nc_nodeid
 
 type
     NCNode*[T: NCDPNode] = object
@@ -50,7 +50,7 @@ proc sendHeartbeat(self: ptr NCNode) {.thread.} =
         nodeSocket.close()
 
 proc runNode*(self: var NCNode) =
-    ncDebug("NCNode.runNode()")
+    ncInfo("NCNode.runNode()")
 
     let nodeSocket = newSocket()
     let registerMessage = NCMessageToServer(kind: NCServerMsgKind.registerNewNode)
@@ -63,16 +63,16 @@ proc runNode*(self: var NCNode) =
     of NCNodeMsgKind.welcome:
         let data = ncBytesToStr(serverResponse.data)
         let nodeId = fromFlatty(data, NCNodeID)
-        ncDebug(fmt("Got new node id: {nodeId}"))
+        ncInfo(fmt("Got new node id: {nodeId}"))
         self.nodeId = nodeId
 
     of NCNodeMsgKind.quit:
-        ncDebug("All work is done, will exit now")
+        ncInfo("All work is done, will exit now")
         self.quit.store(true)
         return
 
     else:
-        ncDebug(fmt("Unknown response: {serverResponse.kind}"))
+        ncError(fmt("Unknown response: {serverResponse.kind}"))
         return
 
     var hbThreadId: Thread[ptr NCNode]
@@ -90,7 +90,7 @@ proc runNode*(self: var NCNode) =
 
         case serverResponse.kind:
         of NCNodeMsgKind.quit:
-            ncDebug("All work is done, will exit now")
+            ncInfo("All work is done, will exit now")
             self.quit.store(true)
 
         of NCNodeMsgKind.newData:
@@ -104,7 +104,7 @@ proc runNode*(self: var NCNode) =
             nodeSocket.close()
 
         else:
-            ncDebug("Unknown response: ", serverResponse.kind)
+            ncError(fmt("Unknown response: {serverResponse.kind}"))
             self.quit.store(true)
 
     ncDebug("Waiting for other thread to finish...")
@@ -113,10 +113,10 @@ proc runNode*(self: var NCNode) =
     if not hbThreadId.running():
         joinThread(hbThreadId)
 
-    ncDebug("Will exit now!")
+    ncInfo("Will exit now!")
 
 proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
-    ncDebug("ncInitNode(config)")
+    ncInfo("ncInitNode(config)")
 
     var ncNode = NCNode[T](dataProcessor: dataProcessor)
 
@@ -134,7 +134,7 @@ proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNo
     return ncNode
 
 proc ncInitNode*[T: NCDPNode](dataProcessor: T, filename: string): NCNode[T] =
-    ncDebug(fmt("ncInitNode({fileName})"))
+    ncInfo(fmt("ncInitNode({fileName})"))
 
     let config = ncLoadConfig(fileName)
     ncInitNode(dataProcessor, config)

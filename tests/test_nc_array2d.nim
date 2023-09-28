@@ -8,6 +8,7 @@ import std/logging
 # Local imports
 import num_crunch/nc_array2d
 import num_crunch/nc_nodeid
+import num_crunch/nc_log
 
 proc test1() =
     const
@@ -88,8 +89,10 @@ proc test2() =
 
 when isMainModule:
     let logger = newFileLogger("tests/test_nc_array2d.log", fmtStr=verboseFmtStr)
-    addHandler(logger)
+    ncInitLogger(logger)
 
     test1()
     test2()
+
+    ncDeinitLogger()
 

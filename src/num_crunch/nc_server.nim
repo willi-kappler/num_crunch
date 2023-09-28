@@ -16,10 +16,10 @@ from chacha20 import Key
 from flatty import fromFlatty, toFlatty
 
 # Local imports
-import private/nc_log
 import private/nc_message
-import nc_nodeid
 import nc_config
+import nc_log
+import nc_nodeid
 
 type
     NCServer*[T: NCDPServer] = object
@@ -64,11 +64,11 @@ proc checkNodesHeartbeat[T](self: ptr NCServer[T]) {.thread.} =
             ncSendMessageToServer(serverSocket, self.key, heartbeatMessage)
             serverSocket.close()
         except IOError:
-            ncDebug("NCServer.checkNodesHeartbeat(), server doesn't respond, will exit now!")
+            ncError("NCServer.checkNodesHeartbeat(), server doesn't respond, will exit now!")
             break
 
 proc createNewNodeId[T](self: ptr NCServer[T]): NCNodeID =
-    ncDebug("NCServer.createNewNodeId()")
+    ncInfo("NCServer.createNewNodeId()")
 
     result = ncNewNodeId()
     var quit = false
@@ -92,7 +92,7 @@ proc validNodeId[T](self: ptr NCServer[T], id: NCNodeID): bool =
             break
 
 proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
-    ncDebug("NCServer.handleClient()")
+    ncInfo("NCServer.handleClient()")
 
     let self = tp[0]
     let client = tp[1]
@@ -101,12 +101,12 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
 
     try:
         let (clientAddr, clientPort) = client.getPeerAddr()
-        ncDebug(fmt("NCServer.handleClient(), Connection from: {clientAddr}, port: {clientPort.uint16}"))
+        ncDebug(fmt("NCServer.handleClient(), connection from: {clientAddr}, port: {clientPort.uint16}"))
     except OSError:
-        ncDebug("NCServer.handleClient(), socket closed, exit thread")
+        ncError("NCServer.handleClient(), socket closed, exit thread")
 
         if self.dataProcessor.isFinished():
-            ncDebug("NCServer.handleClient(), Work is done, exit now!")
+            ncInfo("NCServer.handleClient(), work is done, exit now!")
             self.quit.store(true)
 
         release(self.serverLock)
@@ -116,11 +116,11 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
     let serverMessage = ncReceiveMessageFromNode(client, self.key)
 
     if self.dataProcessor.isFinished():
-        ncDebug("NCServer.handleClient(), Work is done, exit now!")
+        ncInfo("NCServer.handleClient(), work is done, exit now!")
+        self.quit.store(true)
 
         let message = NCMessageToNode(kind: NCNodeMsgKind.quit)
         ncSendMessageToNode(client, self.key, message)
-        self.quit.store(true)
         release(self.serverLock)
         client.close()
 
@@ -128,7 +128,7 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
 
     case serverMessage.kind:
     of NCServerMsgKind.registerNewNode:
-        ncDebug("NCServer.handleClient(), Register new node")
+        ncInfo("NCServer.handleClient(), register new node")
 
         # Create a new node id and send it to the node
         let newId = self.createNewNodeId()
@@ -140,29 +140,29 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
         self.nodes.add((newId, getTime()))
 
     of NCServerMsgKind.needsData:
-        ncDebug("NCServer.handleClient(), Node needs data")
+        ncDebug("NCServer.handleClient(), node needs data")
 
         if self.validNodeId(serverMessage.id):
-            ncDebug(fmt("NCServer.handleClient(), Node id valid: {serverMessage.id}"))
+            ncDebug(fmt("NCServer.handleClient(), node id valid: {serverMessage.id}"))
             # Send new data back to node
             let newData = self.dataProcessor.getNewData(serverMessage.id)
             let message = NCMessageToNode(kind: NCNodeMsgKind.newData, data: newData)
             ncSendMessageToNode(client, self.key, message)
         else:
-            ncDebug(fmt("NCServer.handleClient(), Node id invalid: {serverMessage.id}"))
+            ncDebug(fmt("NCServer.handleClient(), node id invalid: {serverMessage.id}"))
 
     of NCServerMsgKind.processedData:
-        ncDebug("NCServer.handleClient(), Node has processed data")
+        ncDebug("NCServer.handleClient(), node has processed data")
 
         if self.validNodeId(serverMessage.id):
-            ncDebug(fmt("NCServer.handleClient(), Node id valid: {serverMessage.id}"))
+            ncDebug(fmt("NCServer.handleClient(), node id valid: {serverMessage.id}"))
             # Store processed data from node
             self.dataProcessor.collectData(serverMessage.data)
         else:
-            ncDebug(fmt("NCServer.handleClient(), Node id invalid: {serverMessage.id}"))
+            ncDebug(fmt("NCServer.handleClient(), node id invalid: {serverMessage.id}"))
 
     of NCServerMsgKind.heartbeat:
-        ncDebug("NCServer.handleClient(), Node sends heartbeat")
+        ncDebug("NCServer.handleClient(), node sends heartbeat")
 
         for i in 0..<self.nodes.len():
             if self.nodes[i][0] == serverMessage.id:
@@ -170,7 +170,7 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
                 break
 
     of NCServerMsgKind.checkHeartbeat:
-        ncDebug("NCServer.handleClient(), Check heartbeat times for all inodes")
+        ncDebug("NCServer.handleClient(), check heartbeat times for all inodes")
 
         let maxDuration = initDuration(seconds = int64(self.heartbeatTimeout))
 
@@ -178,23 +178,23 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
 
         for n in self.nodes:
             if maxDuration < (currentTime - n[1]):
-                ncDebug(fmt("NCServer.handleClient(), Node is not sending heartbeat message: {n[0]}"))
+                ncDebug(fmt("NCServer.handleClient(), node is not sending heartbeat message: {n[0]}"))
                 # Let data processor know that this node seems dead
                 self.dataProcessor.maybeDeadNode(n[0])
 
     of NCServerMsgKind.getStatistics:
-        ncDebug("NCServer.handleClient(), Send some statistics")
+        ncDebug("NCServer.handleClient(), send some statistics")
         # TODO: respond with some information
 
     of NCServerMsgKind.forceQuit:
-        ncDebug("NCServer.handleClient(), Force quit")
+        ncDebug("NCServer.handleClient(), force quit")
         self.quit.store(true)
 
     release(self.serverLock)
     client.close()
 
 proc runServer*[T](self: var NCServer[T]) =
-    ncDebug("NCServer.runServer()")
+    ncInfo("NCServer.runServer()")
 
     var hbThreadId: Thread[ptr NCServer[T]]
 
@@ -245,26 +245,31 @@ proc runServer*[T](self: var NCServer[T]) =
 
     acquire(self.serverLock)
     # Save the user data as soon as possible
+    ncInfo("NCServer.runServer(), save all user data!")
     self.dataProcessor.saveData()
     release(self.serverLock)
 
     serverSocket.close()
 
-    ncDebug("NCServer.runServer(), Waiting for other threads to finish...")
+    ncDebug("NCServer.runServer(), waiting for other threads to finish...")
+    # Sleep 5 seconds and give other threads a chance to finish...
+    sleep(5000) 
 
-    joinThread(hbThreadId)
-    ncDebug("NCServer.runServer(), hearbeat thread finished")
+    if not running(hbThreadId):
+        joinThread(hbThreadId)
+        ncDebug("NCServer.runServer(), hearbeat thread finished")
 
     for i in 0..<maxThreads:
         if assignedThreads[i]:
-            joinThread(clientThreads[i])
-    ncDebug("NCServer.runServer(), other threads finished")
+            if not running(clientThreads[i]):
+                joinThread(clientThreads[i])
+                ncDebug("NCServer.runServer(), client thread finished")
 
     deinitLock(self.serverLock)
-    ncDebug("NCServer.runServer(), Will exit now!")
+    ncInfo("NCServer.runServer(), will exit now!")
 
 proc ncInitServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): NCServer[T] =
-    ncDebug("ncInitServer(config)")
+    ncInfo("ncInitServer(config)")
 
     # Initiate the random number genertator
     randomize()
@@ -274,8 +279,8 @@ proc ncInitServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): 
     ncServer.serverPort = ncConfig.serverPort
     # Cast key from string to array[32, byte] for chacha20 (32 bytes)
     let keyStr = ncConfig.secretKey
-    ncDebug(fmt("Key length: {keyStr.len()}"))
-    assert(keyStr.len() == len(Key), "Key must be exactly 32 bytes long")
+    ncDebug(fmt("ncInitServer(), key length: {keyStr.len()}"))
+    assert(keyStr.len() == len(Key), "ncInitServer(), key must be exactly 32 bytes long")
     let key = cast[ptr(Key)](unsafeAddr(keyStr[0]))
 
     ncServer.key = key[]
@@ -284,7 +289,7 @@ proc ncInitServer*[T: NCDPServer](dataProcessor: T, ncConfig: NCConfiguration): 
     return ncServer
 
 proc ncInitServer*[T: NCDPServer](dataProcessor: T, fileName: string): NCServer[T] =
-    ncDebug(fmt("ncInitServer({fileName})"))
+    ncInfo(fmt("ncInitServer({fileName})"))
 
     let config = ncLoadConfig(fileName)
     ncInitServer(dataProcessor, config)

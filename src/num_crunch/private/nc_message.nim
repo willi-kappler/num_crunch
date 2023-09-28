@@ -11,7 +11,7 @@ from std/endians import bigEndian32
 
 # Internal imports
 import ../nc_nodeid
-import nc_log
+import ../nc_log
 
 type
     NCNodeMsgKind* = enum

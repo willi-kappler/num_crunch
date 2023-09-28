@@ -6,6 +6,7 @@ import std/logging
 from std/os import getAppDir
 
 # Local imports
+import num_crunch/nc_log
 import num_crunch/nc_node
 
 type
@@ -46,10 +47,11 @@ proc test3() =
 
 when isMainModule:
     let logger = newFileLogger("tests/test_nc_node.log", fmtStr=verboseFmtStr)
-    addHandler(logger)
+    ncInitLogger(logger)
 
     test1()
     test2()
     test3()
 
+    ncDeinitLogger()
 
