@@ -200,6 +200,12 @@ proc runServer*[T](self: var NCServer[T]) =
 
     createThread(hbThreadId, checkNodesHeartbeat, unsafeAddr(self))
 
+    # This is a poor thread pool implementation...
+    # Maybe use s.th. better:
+    # https://github.com/Araq/malebolgia
+    # https://github.com/mratsim/weave
+    # https://github.com/status-im/nim-taskpools
+
     const maxThreads = 16
     var clientThreads: array[0..maxThreads, ClientThread[T]]
     var assignedThreads: array[0..maxThreads, bool]

@@ -14,7 +14,7 @@ type
         testCounter: uint8
 
 proc isFinished(self: var MyDP): bool =
-    echo("isFinished(), testcounter: ", self.testCounter)
+    debug("isFinished(), testcounter: ", self.testCounter)
     if self.testcounter > 0:
         self.testCounter = self.testCounter - 1
     result = (self.testCounter == 0)
