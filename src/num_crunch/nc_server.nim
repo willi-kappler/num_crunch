@@ -91,27 +91,11 @@ proc validNodeId[T](self: ptr NCServer[T], id: NCNodeID): bool =
             result = true
             break
 
-proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
-    ncInfo("NCServer.handleClient()")
+proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
+    ncInfo("NCServer.handleClientInner()")
 
-    let self = tp[0]
-    let client = tp[1]
-
-    acquire(self.serverLock)
-
-    try:
-        let (clientAddr, clientPort) = client.getPeerAddr()
-        ncDebug(fmt("NCServer.handleClient(), connection from: {clientAddr}, port: {clientPort.uint16}"))
-    except OSError:
-        ncError("NCServer.handleClient(), socket closed, exit thread")
-
-        if self.dataProcessor.isFinished():
-            ncInfo("NCServer.handleClient(), work is done, exit now!")
-            self.quit.store(true)
-
-        release(self.serverLock)
-
-        return
+    let (clientAddr, clientPort) = client.getPeerAddr()
+    ncDebug(fmt("NCServer.handleClient(), connection from: {clientAddr}, port: {clientPort.uint16}"))
 
     let serverMessage = ncReceiveMessageFromNode(client, self.key)
 
@@ -121,9 +105,6 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
 
         let message = NCMessageToNode(kind: NCNodeMsgKind.quit)
         ncSendMessageToNode(client, self.key, message)
-        release(self.serverLock)
-        client.close()
-
         return
 
     case serverMessage.kind:
@@ -187,8 +168,26 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
         # TODO: respond with some information
 
     of NCServerMsgKind.forceQuit:
-        ncDebug("NCServer.handleClient(), force quit")
+        ncInfo("NCServer.handleClient(), force quit")
         self.quit.store(true)
+
+proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
+    ncInfo("NCServer.handleClient()")
+
+    let self = tp[0]
+    let client = tp[1]
+
+    acquire(self.serverLock)
+
+    if self.dataprocessor.isfinished():
+        ncinfo("ncserver.handleclient(), work is done, exit now!")
+        self.quit.store(true)
+    else:
+        try:
+            handleClientInner(self, client)
+        except CatchableError:
+            let msg = getCurrentExceptionMsg()
+            ncError("NCServer.handleClient(), an error occurred: {msg}, exit thread")
 
     release(self.serverLock)
     client.close()
