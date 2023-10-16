@@ -1,8 +1,9 @@
 
 
 # Local imports
-#import ../../src/num_crunch/nc_nodeid
-#import ../../src/num_crunch/nc_array2d
+import num_crunch/nc_nodeid
+import num_crunch/nc_array2d
+import num_crnuch&nc_common
 
 type
     MandelNodeDP = object

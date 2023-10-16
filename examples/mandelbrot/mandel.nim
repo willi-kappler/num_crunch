@@ -7,9 +7,10 @@ from system import quit
 from os import getAppFilename
 
 # Local imports
-import ../../src/num_crunch/nc_config
-import ../../src/num_crunch/nc_node
-import ../../src/num_crunch/nc_server
+import num_crunch/nc_config
+import num_crunch/nc_node
+import num_crunch/nc_server
+import num_crunch/nc_log
 
 import m_server
 import m_node
@@ -26,7 +27,8 @@ proc showHelpAndQuit() =
 if isMainModule:
     var runServer = false
     let logger = newFileLogger("mandel.log", fmtStr=verboseFmtStr)
-    addHandler(logger)
+    # addHandler(logger)
+    ncInitLogger(logger)
 
     let config = ncLoadConfig("config.ini")
 
@@ -45,12 +47,12 @@ if isMainModule:
             showHelpAndQuit()
 
     if runServer:
-        info("Starting server")
+        ncInfo("Starting server")
         let dataProcessor = initMandelServerDP()
         var server = ncInitServer(dataProcessor, config)
-        #server.runServer()
+        server.runServer()
     else:
-        info("Starting Node")
+        ncInfo("Starting Node")
         let dataProcessor = initMandelNodeDP()
         var node = ncInitNode(dataProcessor, config)
         node.runNode()
