@@ -3,7 +3,7 @@
 # Local imports
 import num_crunch/nc_nodeid
 import num_crunch/nc_array2d
-import num_crnuch&nc_common
+import num_crunch/nc_common
 
 type
     MandelNodeDP = object

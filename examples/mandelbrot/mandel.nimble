@@ -11,6 +11,12 @@ requires "nim >= 2.0.0"
 requires "https://github.com/willi-kappler/num_crunch"
 
 # Tasks
+task checkAll, "run 'nim check' on all source files":
+    exec "nim check m_common.nim"
+    exec "nim check m_node.nim"
+    exec "nim check m_server.nim"
+    exec "nim check mandel.nim"
+
 task runMandelbrot, "Runs the mandelbrot example":
     exec "nim c mandel.nim"
     exec "./mandel --server &"
