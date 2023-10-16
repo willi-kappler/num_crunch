@@ -42,12 +42,5 @@ task cleanTests, "Clean log files in binaries in tests folder":
 
 task runMandelbrot, "Runs the mandelbrot example":
     cd "examples/mandelbrot/"
-    exec "nim c mandel.nim"
-    exec "./mandel --server &"
-    # Start four nodes
-    exec "./mandel &"
-    exec "./mandel &"
-    exec "./mandel &"
-    exec "./mandel &"
-
+    exec "nimble runMandelbrot"
 
