@@ -24,7 +24,7 @@ proc showHelpAndQuit() =
 
     quit()
 
-if isMainModule:
+when isMainModule:
     var runServer = false
     let logger = newFileLogger("mandel.log", fmtStr=verboseFmtStr)
     # addHandler(logger)
