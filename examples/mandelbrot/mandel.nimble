@@ -4,11 +4,12 @@ author        = "Willi Kappler"
 description   = "Distributed Mandelbrot with nim"
 license       = "MIT"
 srcDir        = "src"
+bin           = @["mandel"]
 
 # Dependencies
 requires "nim >= 2.0.0"
 #requires "num_crunch >= 0.1.0"
-requires "https://github.com/willi-kappler/num_crunch"
+requires "https://github.com/willi-kappler/num_crunch#head"
 
 # Tasks
 task checkAll, "run 'nim check' on all source files":

@@ -10,32 +10,28 @@ import m_common
 type
     MandelServerDP = object
         data: NCArray2D[uint32]
-        re1: float64
         re2: float64
-        reStep: float64
-        im1: float64
         im2: float64
-        imStep: float64
-        pixelPerTileX: uint32
-        pixelPerTileY: uint32
+        initData: MandelInit
 
 proc isFinished*(self: MandelServerDP): bool =
     self.data.isFinished()
 
 proc getInitData*(self: var MandelServerDP): seq[byte] =
-    @[]
+    return ncToBytes(self.initData)
 
 proc getNewData*(self: var MandelServerDP, n: NCNodeID): seq[byte] =
-    let (tx, ty) = self.data.nextUnprocessedTile(n)
-    @[]
+    return ncToBytes(self.data.nextUnprocessedTile(n))
 
 proc collectData*(self: var MandelServerDP, data: seq[byte]) =
-    discard
+    let processedData = ncFromBytes(data, MandelResult)
+    self.data.setTileXY(processedData.tx, processedData.ty, processedData.pixelData)
 
 proc maybeDeadNode*(self: var MandelServerDP, n: NCNodeID) =
     self.data.maybeDeadNode(n)
 
 proc saveData*(self: var MandelServerDP) =
+    # TODO: save pixel data to image file
     discard
 
 proc initMandelServerDP*(): MandelServerDP =
@@ -55,8 +51,14 @@ proc initMandelServerDP*(): MandelServerDP =
     let im2 = 0.0
     let imStep = (im2 - im1) / float64(imgHeight)
 
-    MandelServerDP(data: data, re1: re1, re2: re2, reStep: reStep,
-                   im1: im1, im2: im2, imStep: imStep,
-                   pixelPerTileX: pixelPerTileX,
-                   pixelPerTileY: pixelPerTileY)
+    let initData = MandelInit(
+        tileWidth: pixelPerTileX,
+        tileHeight: pixelPerTileY,
+        re1: re1,
+        im1: im1,
+        reStep: reStep,
+        imStep: imStep
+    )
+
+    MandelServerDP(data: data, re2: re2, im2: im2, initData: initData)
 
