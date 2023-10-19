@@ -22,6 +22,9 @@ proc isFinished(self: var MyDP): bool =
         self.testCounter = self.testCounter - 1
     result = (self.testCounter == 0)
 
+proc getInitData(self: var MyDP): seq[byte] =
+    @[]
+
 proc getNewData(self: var MyDP, n: NCNodeID): seq[byte] =
     @[]
 

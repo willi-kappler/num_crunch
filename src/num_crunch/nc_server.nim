@@ -13,13 +13,13 @@ from std/random import randomize
 
 # External imports
 from chacha20 import Key
-from flatty import fromFlatty, toFlatty
 
 # Local imports
 import private/nc_message
 import nc_config
 import nc_log
 import nc_nodeid
+import nc_common
 
 type
     NCServer*[T: NCDPServer] = object
@@ -37,6 +37,7 @@ type
 
     NCDPServer = concept dp
         dp.isFinished() is bool
+        dp.getInitData() is seq[byte]
         dp.getNewData(type NCNodeID) is seq[byte]
         dp.collectData(type seq[byte])
         dp.maybeDeadNode(type NCNodeID)
@@ -113,7 +114,8 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
 
         # Create a new node id and send it to the node
         let newId = self.createNewNodeId()
-        let data = ncStrToBytes(toFlatty(newId))
+        let initData = self.dataProcessor.getInitData()
+        let data = ncToBytes((newId, initData))
         let message = NCMessageToNode(kind: NCNodeMsgKind.welcome, data: data)
         ncSendMessageToNode(client, self.key, message)
 

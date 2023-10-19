@@ -13,6 +13,9 @@ type
     MyDP = object
         data: seq[byte]
 
+proc init(self: var MyDP, data: seq[byte]) =
+    discard
+
 proc processData(self: var MyDP, input: seq[byte]): seq[byte] =
     self.data
 

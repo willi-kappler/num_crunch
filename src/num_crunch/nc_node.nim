@@ -9,13 +9,13 @@ from std/strformat import fmt
 
 # External imports
 from chacha20 import Key
-from flatty import fromFlatty
 
 # Local imports
 import private/nc_message
 import nc_config
 import nc_log
 import nc_nodeid
+import nc_common
 
 type
     NCNode*[T: NCDPNode] = object
@@ -29,6 +29,7 @@ type
         quit: Atomic[bool]
 
     NCDPNode* = concept dp
+        dp.init(type seq[byte])
         dp.processData(type seq[byte]) is seq[byte]
 
 proc sendHeartbeat(self: ptr NCNode) {.thread.} =
@@ -61,10 +62,10 @@ proc runNode*(self: var NCNode) =
 
     case serverResponse.kind:
     of NCNodeMsgKind.welcome:
-        let data = ncBytesToStr(serverResponse.data)
-        let nodeId = fromFlatty(data, NCNodeID)
+        let (nodeId, initData) = ncFromBytes(serverResponse.data, (NCNodeID, seq[byte]))
         ncInfo(fmt("Got new node id: {nodeId}"))
         self.nodeId = nodeId
+        self.dataProcessor.init(initData)
 
     of NCNodeMsgKind.quit:
         ncInfo("All work is done, will exit now")

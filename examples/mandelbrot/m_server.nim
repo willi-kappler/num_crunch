@@ -22,6 +22,9 @@ type
 proc isFinished*(self: MandelServerDP): bool =
     self.data.isFinished()
 
+proc getInitData*(self: var MandelServerDP): seq[byte] =
+    @[]
+
 proc getNewData*(self: var MandelServerDP, n: NCNodeID): seq[byte] =
     let (tx, ty) = self.data.nextUnprocessedTile(n)
     @[]

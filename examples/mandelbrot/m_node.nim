@@ -9,6 +9,9 @@ type
     MandelNodeDP = object
         data: bool
 
+proc init*(self: var MandelNodeDP, data: seq[byte]) =
+    discard
+
 proc processData*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
     result = newSeq[byte]()
 

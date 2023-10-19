@@ -7,7 +7,7 @@ proc ncToBytes*[T](data: T): seq[byte] =
     let encStr = toFlatty(data)
     return ncStrToBytes(encStr)
 
-proc ncFromBytes*[T](data: seq[byte]): T =
+proc ncFromBytes*[T](data: seq[byte], x: typedesc[T]): T =
     let encStr = ncBytesToStr(data)
     return fromFlatty(encStr, T)
 
