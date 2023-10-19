@@ -189,7 +189,7 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
             handleClientInner(self, client)
         except CatchableError:
             let msg = getCurrentExceptionMsg()
-            ncError("  NCServer.handleClient(), an error occurred: {msg}, exit thread")
+            ncError(fmt("  NCServer.handleClient(), an error occurred: {msg}, exit thread"))
 
     release(self.serverLock)
     client.close()
