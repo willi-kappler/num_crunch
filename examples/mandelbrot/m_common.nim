@@ -8,6 +8,7 @@ type
         im1*: float64
         reStep*: float64
         imStep*: float64
+        maxIter*: uint32
 
     MandelResult* = object
         tx*: uint32

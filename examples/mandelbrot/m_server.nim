@@ -37,6 +37,8 @@ proc saveData*(self: var MandelServerDP) =
 proc initMandelServerDP*(): MandelServerDP =
     # Image size: 512 x 512
     # Number of tiles: 4 * 4 = 16
+
+    # TODO: read in these values from a configuration file
     let imgWidth: uint32 = 512
     let imgHeight: uint32 = 512
     let numTilesX: uint32 = 4
@@ -50,6 +52,7 @@ proc initMandelServerDP*(): MandelServerDP =
     let im1 = 0.0
     let im2 = 0.0
     let imStep = (im2 - im1) / float64(imgHeight)
+    let maxIter: uint32 = 1024
 
     let initData = MandelInit(
         tileWidth: pixelPerTileX,
@@ -57,7 +60,8 @@ proc initMandelServerDP*(): MandelServerDP =
         re1: re1,
         im1: im1,
         reStep: reStep,
-        imStep: imStep
+        imStep: imStep,
+        maxIter: maxIter
     )
 
     MandelServerDP(data: data, re2: re2, im2: im2, initData: initData)
