@@ -4,11 +4,13 @@ TODO:
 - Make heartbeat tolerance configurable
 - Add more test cases
 - Add more examples
-- Use log() instead of echo() for debug outputs throughout the code
 - In NCServer.handleClient(): Use lock only when needed
+- Write png image file for mandel example, use https://github.com/jangko/nimPNG
+
 
 Done:
 # Finish server code
 # Finish node code
+# Use log() instead of echo() for debug outputs throughout the code
 
 
