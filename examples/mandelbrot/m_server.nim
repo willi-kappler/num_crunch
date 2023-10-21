@@ -47,9 +47,9 @@ proc initMandelServerDP*(): MandelServerDP =
     let imgHeight: uint32 = 512
     let numTilesX: uint32 = 4
     let numTilesY: uint32 = 4
-    let pixelPerTileX: uint32 = imgWidth div numTilesX
-    let pixelPerTileY: uint32 = imgHeight div numTilesY
-    let data = ncNewArray2D[uint32](imgWidth, imgHeight, numTilesX, numTilesY)
+    let tileWidth: uint32 = imgWidth div numTilesX
+    let tileHeight: uint32 = imgHeight div numTilesY
+    let data = ncNewArray2D[uint32](tileWidth, tileHeight, numTilesX, numTilesY)
     let re1 = 0.0
     let re2 = 0.0
     let reStep = (re2 - re1) / float64(imgWidth)
@@ -59,8 +59,8 @@ proc initMandelServerDP*(): MandelServerDP =
     let maxIter: uint32 = 1024
 
     let initData = MandelInit(
-        tileWidth: pixelPerTileX,
-        tileHeight: pixelPerTileY,
+        tileWidth: tileWidth,
+        tileHeight: tileHeight,
         re1: re1,
         im1: im1,
         reStep: reStep,
