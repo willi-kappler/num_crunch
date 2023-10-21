@@ -83,6 +83,7 @@ proc setTileXY*[T](self: var NCArray2D[T], ax: uint32, ay: uint32, tile: seq[T])
     let offsetY = self.totalSizeX * self.tileSizeY * ay
     let offsetX = self.tileSizeX * ax
     let offset = offsetX + offsetY
+    ncDebug(fmt("offsetX: {offsetX}, offsetY: {offsetY}, offset: {offset}"))
 
     for ty in 0..<self.tileSizeY:
         # Offset inside tile
