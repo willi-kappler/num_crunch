@@ -40,12 +40,12 @@ proc sendHeartbeat(self: ptr NCNode) {.thread.} =
     let heartbeatMessage = NCMessageToServer(
         kind: NCServerMsgKind.heartbeat,
         id: self.nodeId)
-    let nodeSocket = newSocket()
 
     while not self.quit.load():
         sleep(int(timeOut))
 
         # Send heartbeat message to server
+        let nodeSocket = newSocket()
         nodeSocket.connect(self.serverAddr, self.serverPort)
         ncSendMessageToServer(nodeSocket, self.key, heartbeatMessage)
         nodeSocket.close()
@@ -84,6 +84,7 @@ proc runNode*(self: var NCNode) =
         id: self.nodeId)
 
     while not self.quit.load():
+        let nodeSocket = newSocket()
         nodeSocket.connect(self.serverAddr, self.serverPort)
         ncSendMessageToServer(nodeSocket, self.key, needDataMessage)
         let serverResponse = ncReceiveMessageFromServer(nodeSocket, self.key)
@@ -99,7 +100,9 @@ proc runNode*(self: var NCNode) =
             let processedData = self.dataProcessor.processData(serverResponse.data)
             let processedDataMessage = NCMessageToServer(
                 kind: NCServerMsgKind.processedData,
-                data: processedData)
+                data: processedData,
+                id: self.nodeId)
+            let nodeSocket = newSocket()
             nodeSocket.connect(self.serverAddr, self.serverPort)
             ncSendMessageToServer(nodeSocket, self.key, processedDataMessage)
             nodeSocket.close()

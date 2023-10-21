@@ -58,7 +58,7 @@ proc checkNodesHeartbeat[T](self: ptr NCServer[T]) {.thread.} =
         sleep(int(timeOut))
 
         # Send message to server (self) so that it can check the heartbeats for all nodes
-        ncDebug("  NCServer.checkNodesHeartbeat(), send heartbeat")
+        ncDebug("  NCServer.checkNodesHeartbeat(), send check heartbeat to self")
         let serverSocket = newSocket()
         try:
             serverSocket.connect("127.0.0.1", self.serverPort)
@@ -81,6 +81,8 @@ proc createNewNodeId[T](self: ptr NCServer[T]): NCNodeID =
                 # NodeId already in use, choose a new one
                 result = ncNewNodeId()
                 quit = false
+
+    ncDebug(fmt("      NCServer.createNewNodeId(), id: {result}"))
 
 proc validNodeId[T](self: ptr NCServer[T], id: NCNodeID): bool =
     ncDebug(fmt("      NCServer.validNodeId(), id: {id}"))
