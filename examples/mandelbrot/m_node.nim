@@ -4,7 +4,9 @@
 import std/complex
 
 # Local imports
-import num_crunch/nc_common
+#import num_crunch/nc_common
+
+import ../../src/num_crunch/nc_common
 
 import m_common
 

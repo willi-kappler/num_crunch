@@ -1,9 +1,13 @@
 
 
 # Local imports
-import num_crunch/nc_nodeid
-import num_crunch/nc_array2d
-import num_crunch/nc_common
+#import num_crunch/nc_nodeid
+#import num_crunch/nc_array2d
+#import num_crunch/nc_common
+
+import ../../src/num_crunch/nc_nodeid
+import ../../src/num_crunch/nc_array2d
+import ../../src/num_crunch/nc_common
 
 import m_common
 

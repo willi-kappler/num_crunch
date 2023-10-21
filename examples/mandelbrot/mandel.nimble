@@ -9,7 +9,7 @@ bin           = @["mandel"]
 # Dependencies
 requires "nim >= 2.0.0"
 #requires "num_crunch >= 0.1.0"
-requires "https://github.com/willi-kappler/num_crunch#head"
+#requires "https://github.com/willi-kappler/num_crunch#head"
 
 # Tasks
 task checkAll, "run 'nim check' on all source files":
