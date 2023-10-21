@@ -79,7 +79,6 @@ proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
 
 proc ncReceiveMessage(socket: Socket, key: Key): string =
     ncDebug("ncReceiveMessage()")
-
     # Read the length of the whole data set (4 bytes)
     let dataLenStr = socket.recv(4)
     # Convert binary data into integer value
@@ -98,7 +97,6 @@ proc ncReceiveMessage(socket: Socket, key: Key): string =
 
 proc ncReceiveMessageFromNode*(nodeSocket: Socket, key: Key): NCMessageFromNode =
     ncDebug("ncReceiveNodeMessage()")
-
     let message = ncReceiveMessage(nodeSocket, key)
 
     # Deserialize data using flatty
@@ -109,7 +107,6 @@ proc ncReceiveMessageFromNode*(nodeSocket: Socket, key: Key): NCMessageFromNode 
 
 proc ncReceiveMessageFromServer*(serverSocket: Socket, key: Key): NCMessageFromServer =
     ncDebug("ncReceiveServerMessage()")
-
     let message = ncReceiveMessage(serverSocket, key)
 
     # Deserialize data using flatty
@@ -139,7 +136,6 @@ proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
 proc ncSendMessage(socket: Socket, key: Key, data: string) =
     ncDebug("ncSendMessage()")
     #echo("ncSendMessage(), data len: ", data.len())
-
     var nonce: Nonce
 
     for i in 0..<nonce.len():
@@ -171,7 +167,6 @@ proc ncSendMessage(socket: Socket, key: Key, data: string) =
 
 proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageToNode) =
     ncDebug("ncSendNodeMessage()")
-
     # Serialize using Flatty
     # https://github.com/treeform/flatty
     let data = toFlatty(nodeMessage)
@@ -180,7 +175,6 @@ proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageTo
 
 proc ncSendMessageToServer*(serverSocket: Socket, key: Key, serverMessage: NCMessageToServer) =
     ncDebug("ncSendServerMessage()")
-
     # Serialize using Flatty
     # https://github.com/treeform/flatty
     let data = toFlatty(serverMessage)
