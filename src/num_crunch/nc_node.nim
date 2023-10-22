@@ -45,6 +45,7 @@ proc sendHeartbeat(self: ptr NCNode) {.thread.} =
         sleep(int(timeOut))
 
         # Send heartbeat message to server
+        ncDebug(fmt("Node {self.nodeId} sends heartbeat message to server"))
         let nodeSocket = newSocket()
         nodeSocket.connect(self.serverAddr, self.serverPort)
         ncSendMessageToServer(nodeSocket, self.key, heartbeatMessage)
@@ -84,6 +85,7 @@ proc runNode*(self: var NCNode) =
         id: self.nodeId)
 
     while not self.quit.load():
+        ncDebug("Send message to server: need new data")
         let nodeSocket = newSocket()
         nodeSocket.connect(self.serverAddr, self.serverPort)
         ncSendMessageToServer(nodeSocket, self.key, needDataMessage)
@@ -98,6 +100,7 @@ proc runNode*(self: var NCNode) =
         of NCNodeMsgKind.newData:
             ncDebug("Got new data to process")
             let processedData = self.dataProcessor.processData(serverResponse.data)
+            ncDebug("Processing done, send result back to server")
             let processedDataMessage = NCMessageToServer(
                 kind: NCServerMsgKind.processedData,
                 data: processedData,
@@ -105,6 +108,8 @@ proc runNode*(self: var NCNode) =
             let nodeSocket = newSocket()
             nodeSocket.connect(self.serverAddr, self.serverPort)
             ncSendMessageToServer(nodeSocket, self.key, processedDataMessage)
+            # Wait for server to receive data
+            sleep(100)
             nodeSocket.close()
 
         else:
