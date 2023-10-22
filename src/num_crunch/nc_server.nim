@@ -205,8 +205,6 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
             let msg = getCurrentExceptionMsg()
             ncError(fmt("NCServer.handleClient(), an error occurred: {msg}, exit thread"))
 
-    release(self.serverLock)
-
     ncDebug("NCServer.handleclient(), close client / node socket")
     client.close()
     ncDebug("NCServer.handleclient(), release lock")
