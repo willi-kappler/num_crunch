@@ -27,9 +27,9 @@ proc getInitData*(self: var MandelServerDP): seq[byte] =
 proc getNewData*(self: var MandelServerDP, n: NCNodeID): seq[byte] =
     return ncToBytes(self.data.nextUnprocessedTile(n))
 
-proc collectData*(self: var MandelServerDP, data: seq[byte]) =
+proc collectData*(self: var MandelServerDP, n: NCNodeID, data: seq[byte]) =
     let processedData = ncFromBytes(data, MandelResult)
-    self.data.setTileXY(processedData.tx, processedData.ty, processedData.pixelData)
+    self.data.collectData(n, processedData.pixelData)
 
 proc maybeDeadNode*(self: var MandelServerDP, n: NCNodeID) =
     self.data.maybeDeadNode(n)
@@ -43,8 +43,8 @@ proc initMandelServerDP*(): MandelServerDP =
     # Number of tiles: 4 * 4 = 16
 
     # TODO: read in these values from a configuration file
-    let imgWidth: uint32 = 512
-    let imgHeight: uint32 = 512
+    let imgWidth: uint32 = 4096
+    let imgHeight: uint32 = 4096
     let numTilesX: uint32 = 4
     let numTilesY: uint32 = 4
     let tileWidth: uint32 = imgWidth div numTilesX

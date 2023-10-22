@@ -11,7 +11,5 @@ type
         maxIter*: uint32
 
     MandelResult* = object
-        tx*: uint32
-        ty*: uint32
         pixelData*: seq[uint32]
 

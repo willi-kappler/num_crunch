@@ -1,12 +1,14 @@
 
 
-# Nim imports
+# Nim std imports
 import std/complex
+from std/strformat import fmt
 
 # Local imports
 #import num_crunch/nc_common
 
 import ../../src/num_crunch/nc_common
+import ../../src/num_crunch/nc_log
 
 import m_common
 
@@ -22,8 +24,6 @@ proc init*(self: var MandelNodeDP, data: seq[byte]) =
 
 proc processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
     let (tx, ty) = ncFromBytes(input, (uint32, uint32))
-    self.data.tx = tx
-    self.data.ty = ty
 
     let tw = self.initData.tileWidth
     let th = self.initData.tileHeight
@@ -66,9 +66,9 @@ proc processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
     return data
 
 proc processData*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
+    ncDebug("processData()")
     let (tx, ty) = ncFromBytes(input, (uint32, uint32))
-    self.data.tx = tx
-    self.data.ty = ty
+    ncDebug(fmt("processData(), tx: {tx}, ty: {ty}"))
 
     let tw = self.initData.tileWidth
     let th = self.initData.tileHeight
