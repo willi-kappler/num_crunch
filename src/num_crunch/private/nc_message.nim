@@ -2,6 +2,7 @@
 # Nim std imports
 import std/net
 from std/random import rand
+from std/strformat import fmt
 
 # External imports
 from chacha20 import chacha20, Key, Nonce
@@ -63,17 +64,17 @@ func ncStrToNonce(s: string): ptr Nonce =
 
 proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
     ncDebug("ncDecodeMessage()")
-    #echo("ncDecodeMessage(), data len: ", data.len())
 
     # Decrypt data using chacha20
     # https://git.sr.ht/~ehmry/chacha20
+    ncDebug("ncDecodeMessage(), decrypt message")
     let dataDecrypted = chacha20(data, key, nonce)
-    #echo("ncDecodeMessage(), data decrypted")
 
     # Decompress data using supersnappy
     # https://github.com/guzba/supersnappy
+    ncDebug("ncDecodeMessage(), decompress message")
     let dataUncompressed = uncompress(dataDecrypted)
-    #echo("ncDecodeMessage(), data uncompressed")
+    ncDebug("ncDecodeMessage(), message decompressed")
 
     return dataUncompressed
 
@@ -82,88 +83,91 @@ proc ncReceiveMessage(socket: Socket, key: Key): string =
     # Read the length of the whole data set (4 bytes)
     let dataLenStr = socket.recv(4)
     # Convert binary data into integer value
-    var dataLen = ncStrToInt(dataLenStr)
-    # bigEndian32(unsafeAddr(dataLen), unsafeAddr(dataLenStr[0]))
+    let dataLen = int(ncStrToInt(dataLenStr))
+    ncDebug(fmt("ncReceiveMessage(), dataLen: {dataLen}"))
 
     # Read the nonce for decrypting with chacha20 (12 bytes)
+    ncDebug("ncReceiveMessage(), receive nonce")
     let nonceStr = socket.recv(len(Nonce))
     # Cast nonce from string to array[12, byte] for chacha20 (12 bytes)
     let nonce = ncStrToNonce(nonceStr)
 
     # Read rest of the data (encrypted)
-    let dataEncrypted = socket.recv(int(dataLen))
+    ncDebug("ncReceiveMessage(), receive data")
+    let dataEncrypted = socket.recv(dataLen)
+    assert(dataEncrypted.len() == dataLen)
+    ncDebug("ncReceiveMessage(), data received")
 
     return ncDecodeMessage(dataEncrypted, key, nonce[])
 
 proc ncReceiveMessageFromNode*(nodeSocket: Socket, key: Key): NCMessageFromNode =
-    ncDebug("ncReceiveNodeMessage()")
+    ncDebug("ncReceiveMessageFromNode()")
     let message = ncReceiveMessage(nodeSocket, key)
 
     # Deserialize data using flatty
     # https://github.com/treeform/flatty
+    ncDebug("ncReceiveMessageFromNode(), de-serialize data")
     let nodeMessage = fromFlatty(message, NCMessageFromNode)
+    ncDebug("ncReceiveMessageFromNode(), message ready")
 
     return nodeMessage
 
 proc ncReceiveMessageFromServer*(serverSocket: Socket, key: Key): NCMessageFromServer =
-    ncDebug("ncReceiveServerMessage()")
+    ncDebug("ncReceiveMessageFromServer()")
     let message = ncReceiveMessage(serverSocket, key)
 
     # Deserialize data using flatty
     # https://github.com/treeform/flatty
+    ncDebug("ncReceiveMessageFromServer(), de-serialize data")
     let serverMessage = fromFlatty(message, NCMessageFromServer)
+    ncDebug("ncReceiveMessageFromServer(), message ready")
 
     return serverMessage
 
 proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
     ncDebug("ncEncodeMessage()")
-    #echo("ncEncodeMessage(), data len: ", data.len())
-    #echo("ncEncodeMessage(), key: ", key)
-    #echo("ncEncodeMessage(), nonce: ", nonce)
 
     # Compress data using supersnappy
     # https://github.com/guzba/supersnappy
+    ncDebug("ncEncodeMessage(), compress message")
     let dataCompressed = compress(data)
-    #echo("ncEncodeMessage(), data compressed")
-    #echo("ncEncodeMessage(), dataCompressed, type: ", type(dataCompressed))
-    #echo("ncEncodeMessage(), data len: ", dataCompressed.len())
 
     # Encrypt data using chacha20
     # https://git.sr.ht/~ehmry/chacha20
-    result = chacha20(dataCompressed, key, nonce)
-    #echo("ncEncodeMessage(), data encrypted")
+    ncDebug("ncEncodeMessage(), encrypt message")
+    let encryptedMessage = chacha20(dataCompressed, key, nonce)
+    ncDebug("ncEncodeMessage(), message encrypted")
+    return encryptedMessage
 
 proc ncSendMessage(socket: Socket, key: Key, data: string) =
     ncDebug("ncSendMessage()")
-    #echo("ncSendMessage(), data len: ", data.len())
     var nonce: Nonce
 
     for i in 0..<nonce.len():
         nonce[i] = byte(rand(255))
 
-    #echo("ncSendMessage(), nonce is ready")
+    ncDebug("ncSendMessage(), encode message")
     let dataEncrypted = ncEncodeMessage(data, key, nonce)
-    #echo("ncSendMessage(), data encrypted")
 
     let dataLen = uint32(dataEncrypted.len())
-    # Convert binary data into integer value
+    ncDebug(fmt("ncSendMessage(), dataLen: {dataLen}"))
+    # Convert integer value to binary data
     let dataLenStr = ncIntToStr(dataLen)
-    # bigEndian32(unsafeAddr(dataLenStr), unsafeAddr(dataLen))
-    #echo("ncSendMessage(), string conversion done")
 
     # Send data length to socket
+    ncDebug("ncSendMessage(), send message length")
     socket.send(dataLenStr)
-    #echo("ncSendMessage(), data length sent")
 
     let nonceStr = ncNonceToStr(nonce)
 
     # Send nonce to socket
+    ncDebug("ncSendMessage(), send nonce")
     socket.send(nonceStr)
-    #echo("ncSendMessage(), nonce sent")
 
     # Send the encrypted data to socket
+    ncDebug("ncSendMessage(), send message")
     socket.send(dataEncrypted)
-    #echo("ncSendMessage(), encrypted data sent")
+    ncDebug("ncSendMessage(), message sent")
 
 proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageToNode) =
     ncDebug("ncSendNodeMessage()")
