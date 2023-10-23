@@ -77,11 +77,9 @@ proc runNode*(self: var NCNode) =
         ncInfo(fmt("NCNode.runNode(), Got new node id: {nodeId}"))
         self.nodeId = nodeId
         self.dataProcessor.init(initData)
-
     of NCNodeMsgKind.quit:
         ncInfo("NCNode.runNode(), All work is done, will exit now")
         return
-
     else:
         ncError(fmt("NCNode.runNode(), Unknown response: {serverResponse.kind}"))
         return
@@ -105,7 +103,6 @@ proc runNode*(self: var NCNode) =
         of NCNodeMsgKind.quit:
             ncInfo("NCNode.runNode(), All work is done, will exit now")
             break
-
         of NCNodeMsgKind.newData:
             ncDebug("NCNode.runNode(), Got new data to process")
             let processedData = self.dataProcessor.processData(serverResponse.data)
@@ -117,10 +114,19 @@ proc runNode*(self: var NCNode) =
             let nodeSocket = newSocket()
             nodeSocket.connect(self.serverAddr, self.serverPort)
             ncSendMessageToServer(nodeSocket, self.key, processedDataMessage)
-            # Wait for server to receive data
-            sleep(100)
+            let serverResponse = ncReceiveMessageFromServer(nodeSocket, self.key)
             nodeSocket.close()
 
+            case serverResponse.kind:
+            of NCNodeMsgKind.quit:
+                ncInfo("NCNode.runNode(), All work is done, will exit now")
+                break
+            of NCNodeMsgKind.ok:
+                # Everything is fine, nothing more to do
+                discard
+            else:
+                ncError(fmt("NCNode.runNode(), Unknown response: {serverResponse.kind}"))
+                break
         else:
             ncError(fmt("NCNode.runNode(), Unknown response: {serverResponse.kind}"))
             break
