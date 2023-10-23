@@ -71,8 +71,9 @@ proc checkNodesHeartbeat[T](self: ptr NCServer[T]) {.thread.} =
 
             case serverResponse.kind:
             of NCNodeMsgKind.quit:
+                # Give other nodes a chance to exit gracefully
                 quitCounter += 1
-                if quitCounter > 5:
+                if quitCounter > 3:
                     self.quit.store(true)
             of NCNodeMsgKind.ok:
                 # Everything is fine, nothing more to do
@@ -143,7 +144,7 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
         # Add the new node id to the list of active nodes
         self.nodes.add((newId, getTime()))
 
-        ncDebug(fmt("NCServer.handleClientInner(), number of nodes: {self.nodes.len()}")
+        ncDebug(fmt("NCServer.handleClientInner(), number of nodes: {self.nodes.len()}"))
 
     of NCServerMsgKind.needsData:
         ncDebug("NCServer.handleClientInner(), node needs data")
@@ -182,7 +183,6 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
         ncDebug("NCServer.handleClientInner(), check heartbeat times for all inodes")
 
         let maxDuration = initDuration(seconds = int64(self.heartbeatTimeout))
-
         let currentTime = getTime()
 
         for n in self.nodes:
