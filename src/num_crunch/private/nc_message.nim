@@ -16,7 +16,7 @@ import ../nc_log
 
 type
     NCNodeMsgKind* = enum
-        welcome, newData, quit
+        welcome, newData, quit, ok
     NCNodeMessage* = object
         kind*: NCNodeMsgKind
         data*: seq[byte]
@@ -25,8 +25,7 @@ type
 
 type
     NCServerMsgKind* = enum
-        registerNewNode, needsData, processedData, heartbeat, checkHeartbeat, getStatistics,
-        forceQuit
+        registerNewNode, needsData, processedData, heartbeat, checkHeartbeat, getStatistics
     NCServerMessage* = object
         kind*: NCServerMsgKind
         id*: NCNodeID

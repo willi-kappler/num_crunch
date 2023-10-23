@@ -3,9 +3,9 @@
 import std/net
 import std/typedthreads
 import std/deques
-import std/atomics
 import std/times
 import std/locks
+import std/atomics
 
 from std/os import sleep
 from std/strformat import fmt
@@ -55,16 +55,32 @@ proc checkNodesHeartbeat[T](self: ptr NCServer[T]) {.thread.} =
     let heartbeatMessage = NCMessageToServer(
         kind: NCServerMsgKind.checkHeartbeat)
 
-    while not self.quit.load():
+    var quitCounter: uint8 = 0
+
+    while true:
         sleep(int(timeOut))
 
         # Send message to server (self) so that it can check the heartbeats for all nodes
         ncDebug("NCServer.checkNodesHeartbeat(), send check heartbeat to self")
-        let serverSocket = newSocket()
+        let nodeSocket = newSocket()
         try:
-            serverSocket.connect("127.0.0.1", self.serverPort)
-            ncSendMessageToServer(serverSocket, self.key, heartbeatMessage)
-            serverSocket.close()
+            nodeSocket.connect("127.0.0.1", self.serverPort)
+            ncSendMessageToServer(nodeSocket, self.key, heartbeatMessage)
+            let serverResponse = ncReceiveMessageFromServer(nodeSocket, self.key)
+            nodeSocket.close()
+
+            case serverResponse.kind:
+            of NCNodeMsgKind.quit:
+                quitCounter += 1
+                if quitCounter > 5:
+                    self.quit.store(true)
+            of NCNodeMsgKind.ok:
+                # Everything is fine, nothing more to do
+                discard
+            else:
+                ncError(fmt("NCServer.checkNodesHeartbeat(), Unknown response: {serverResponse.kind}"))
+                break
+
         except IOError:
             ncError("NCServer.checkNodesHeartbeat(), server doesn't respond, will exit now!")
             break
@@ -106,11 +122,10 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
 
     if self.dataProcessor.isFinished():
         ncInfo("NCServer.handleClientInner(), work is done, exit now!")
-        self.quit.store(true)
 
         let message = NCMessageToNode(kind: NCNodeMsgKind.quit)
         ncSendMessageToNode(client, self.key, message)
-        ncInfo("NCServer.handleClientInner(), quit message was sent")
+        ncDebug("NCServer.handleClientInner(), quit message was sent", 2)
         return
 
     case serverMessage.kind:
@@ -127,6 +142,8 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
 
         # Add the new node id to the list of active nodes
         self.nodes.add((newId, getTime()))
+
+        ncDebug(fmt("NCServer.handleClientInner(), number of nodes: {self.nodes.len()}")
 
     of NCServerMsgKind.needsData:
         ncDebug("NCServer.handleClientInner(), node needs data")
@@ -179,10 +196,6 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
         ncDebug("NCServer.handleClientInner(), send some statistics")
         # TODO: respond with some information
 
-    of NCServerMsgKind.forceQuit:
-        ncInfo("NCServer.handleClientInner(), force quit")
-        self.quit.store(true)
-
     ncDebug("NCServer.handleClientInner(): done", 2)
 
 proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
@@ -195,22 +208,18 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
 
     acquire(self.serverLock)
 
-    if self.dataprocessor.isfinished():
-        ncinfo("NCServer.handleclient(), work is done, exit now!")
-        self.quit.store(true)
-    else:
-        try:
-            handleClientInner(self, client)
-        except CatchableError:
-            let msg = getCurrentExceptionMsg()
-            ncError(fmt("NCServer.handleClient(), an error occurred: {msg}, exit thread"))
+    try:
+        handleClientInner(self, client)
+    except CatchableError:
+        let msg = getCurrentExceptionMsg()
+        ncError(fmt("NCServer.handleClient(), an error occurred: {msg}, exit thread"))
 
-    ncDebug("NCServer.handleclient(), close client / node socket", 2)
-    client.close()
-    ncDebug("NCServer.handleclient(), release lock", 2)
+    ncDebug("NCServer.handleClient(), release lock", 2)
     release(self.serverLock)
-    ncDebug("NCServer.handleclient(), lock released", 2)
-    ncDebug(fmt("NCServer.handleclient(), node finished, thread id: {threadId}"), 2)
+    ncDebug("NCServer.handleClient(), lock released", 2)
+    ncDebug("NCServer.handleClient(), close client / node socket", 2)
+    client.close()
+    ncDebug(fmt("NCServer.handleClient(), node finished, thread id: {threadId}"), 2)
 
 proc runServer*[T](self: var NCServer[T]) =
     ncInfo("NCServer.runServer()")
