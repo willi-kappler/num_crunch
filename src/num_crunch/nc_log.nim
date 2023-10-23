@@ -7,11 +7,13 @@ import std/logging
 var ncLoggerLock: Lock
 var ncLoggerEnabled: bool = false
 var ncLogger: Logger
+var ncDebugLevel: uint8 = 0
 
-proc ncInitLogger*(newLogger: Logger) =
+proc ncInitLogger*(newLogger: Logger, debugLevel: uint8 = 0) =
     ncLoggerEnabled = true
     initLock(ncLoggerLock)
     ncLogger = newLogger
+    ncDebugLevel = debugLevel
 
 proc ncDeinitLogger*() =
     ncLoggerEnabled = false
@@ -23,8 +25,9 @@ proc ncLog*(level: Level, message: string) =
             {.cast(gcsafe).}:
                 ncLogger.log(level, message)
 
-proc ncDebug*(message: string) =
-    ncLog(lvlDebug, message)
+proc ncDebug*(message: string, level: uint8 = 0) =
+    if ncDebugLevel >= level:
+        ncLog(lvlDebug, message)
 
 proc ncInfo*(message: string) =
     ncLog(lvlInfo, message)

@@ -33,7 +33,7 @@ type
         dp.processData(type seq[byte]) is seq[byte]
 
 proc sendHeartbeat(self: ptr NCNode) {.thread.} =
-    ncDebug("NCNode.sendHeartbeat()")
+    ncDebug("NCNode.sendHeartbeat()", 2)
 
     let timeOut = uint(self.heartbeatTimeout * 1000)
 
@@ -100,7 +100,7 @@ proc runNode*(self: var NCNode) =
         of NCNodeMsgKind.newData:
             ncDebug("Got new data to process")
             let processedData = self.dataProcessor.processData(serverResponse.data)
-            ncDebug("Processing done, send result back to server")
+            ncDebug("Processing done, send result back to server", 2)
             let processedDataMessage = NCMessageToServer(
                 kind: NCServerMsgKind.processedData,
                 data: processedData,

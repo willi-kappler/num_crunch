@@ -57,11 +57,11 @@ proc setXY*[T](self: var NCArray2D[T], x: uint32, y: uint32, v: T) =
     self.data[offset] = v
 
 proc getData*[T](self: NCArray2D[T]): ref seq[T] =
-    ncDebug(fmt("NCArray2D.getData()"))
+    ncDebug(fmt("NCArray2D.getData()"), 2)
     addr(self.data)
 
 proc getTileXY*[T](self: NCArray2D[T], ax: uint32, ay: uint32): seq[T] =
-    ncDebug(fmt("NCArray2D.getTileXY(), {ax}, {ay}"))
+    ncDebug(fmt("NCArray2D.getTileXY(), {ax}, {ay}"), 2)
     result = newSeq[T](self.tileSizeX * self.tileSizeY)
     let offsetY = self.totalSizeX * self.tileSizeY * ay
     let offsetX = self.tileSizeX * ax
@@ -79,11 +79,11 @@ proc getTileXY*[T](self: NCArray2D[T], ax: uint32, ay: uint32): seq[T] =
             result[i] = self.data[j]
 
 proc setTileXY*[T](self: var NCArray2D[T], ax: uint32, ay: uint32, tile: seq[T]) =
-    ncDebug(fmt("NCArray2D.setTileXY(), {ax}, {ay}"))
+    ncDebug(fmt("NCArray2D.setTileXY(), {ax}, {ay}"), 2)
     let offsetY = self.totalSizeX * self.tileSizeY * ay
     let offsetX = self.tileSizeX * ax
     let offset = offsetX + offsetY
-    ncDebug(fmt("offsetX: {offsetX}, offsetY: {offsetY}, offset: {offset}"))
+    ncDebug(fmt("offsetX: {offsetX}, offsetY: {offsetY}, offset: {offset}"), 2)
 
     for ty in 0..<self.tileSizeY:
         # Offset inside tile

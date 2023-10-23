@@ -66,7 +66,7 @@ proc processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
     return data
 
 proc processData*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
-    ncDebug("processData()")
+    ncDebug("processData()", 2)
     let (tx, ty) = ncFromBytes(input, (uint32, uint32))
     ncDebug(fmt("processData(), tx: {tx}, ty: {ty}"))
 

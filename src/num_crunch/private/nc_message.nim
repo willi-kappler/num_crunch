@@ -63,114 +63,114 @@ func ncStrToNonce(s: string): ptr Nonce =
     result = cast[ptr(Nonce)](unsafeAddr(s[0]))
 
 proc ncDecodeMessage*(data: string, key: Key, nonce: Nonce): string =
-    ncDebug("ncDecodeMessage()")
+    ncDebug("ncDecodeMessage()", 2)
 
     # Decrypt data using chacha20
     # https://git.sr.ht/~ehmry/chacha20
-    ncDebug("ncDecodeMessage(), decrypt message")
+    ncDebug("ncDecodeMessage(), decrypt message", 2)
     let dataDecrypted = chacha20(data, key, nonce)
 
     # Decompress data using supersnappy
     # https://github.com/guzba/supersnappy
-    ncDebug("ncDecodeMessage(), decompress message")
+    ncDebug("ncDecodeMessage(), decompress message", 2)
     let dataUncompressed = uncompress(dataDecrypted)
-    ncDebug("ncDecodeMessage(), message decompressed")
+    ncDebug("ncDecodeMessage(), message decompressed", 2)
 
     return dataUncompressed
 
 proc ncReceiveMessage(socket: Socket, key: Key): string =
-    ncDebug("ncReceiveMessage()")
+    ncDebug("ncReceiveMessage()", 2)
     # Read the length of the whole data set (4 bytes)
     let dataLenStr = socket.recv(4)
     # Convert binary data into integer value
     let dataLen = int(ncStrToInt(dataLenStr))
-    ncDebug(fmt("ncReceiveMessage(), dataLen: {dataLen}"))
+    ncDebug(fmt("ncReceiveMessage(), dataLen: {dataLen}"), 2)
 
     # Read the nonce for decrypting with chacha20 (12 bytes)
-    ncDebug("ncReceiveMessage(), receive nonce")
+    ncDebug("ncReceiveMessage(), receive nonce", 2)
     let nonceStr = socket.recv(len(Nonce))
     # Cast nonce from string to array[12, byte] for chacha20 (12 bytes)
     let nonce = ncStrToNonce(nonceStr)
 
     # Read rest of the data (encrypted)
-    ncDebug("ncReceiveMessage(), receive data")
+    ncDebug("ncReceiveMessage(), receive data", 2)
     let dataEncrypted = socket.recv(dataLen)
     assert(dataEncrypted.len() == dataLen)
-    ncDebug("ncReceiveMessage(), data received")
+    ncDebug("ncReceiveMessage(), data received", 2)
 
     return ncDecodeMessage(dataEncrypted, key, nonce[])
 
 proc ncReceiveMessageFromNode*(nodeSocket: Socket, key: Key): NCMessageFromNode =
-    ncDebug("ncReceiveMessageFromNode()")
+    ncDebug("ncReceiveMessageFromNode()", 2)
     let message = ncReceiveMessage(nodeSocket, key)
 
     # Deserialize data using flatty
     # https://github.com/treeform/flatty
-    ncDebug("ncReceiveMessageFromNode(), de-serialize data")
+    ncDebug("ncReceiveMessageFromNode(), de-serialize data", 2)
     let nodeMessage = fromFlatty(message, NCMessageFromNode)
-    ncDebug("ncReceiveMessageFromNode(), message ready")
+    ncDebug("ncReceiveMessageFromNode(), message ready", 2)
 
     return nodeMessage
 
 proc ncReceiveMessageFromServer*(serverSocket: Socket, key: Key): NCMessageFromServer =
-    ncDebug("ncReceiveMessageFromServer()")
+    ncDebug("ncReceiveMessageFromServer()", 2)
     let message = ncReceiveMessage(serverSocket, key)
 
     # Deserialize data using flatty
     # https://github.com/treeform/flatty
-    ncDebug("ncReceiveMessageFromServer(), de-serialize data")
+    ncDebug("ncReceiveMessageFromServer(), de-serialize data", 2)
     let serverMessage = fromFlatty(message, NCMessageFromServer)
-    ncDebug("ncReceiveMessageFromServer(), message ready")
+    ncDebug("ncReceiveMessageFromServer(), message ready", 2)
 
     return serverMessage
 
 proc ncEncodeMessage*(data: string, key: Key, nonce: Nonce): string =
-    ncDebug("ncEncodeMessage()")
+    ncDebug("ncEncodeMessage()", 2)
 
     # Compress data using supersnappy
     # https://github.com/guzba/supersnappy
-    ncDebug("ncEncodeMessage(), compress message")
+    ncDebug("ncEncodeMessage(), compress message", 2)
     let dataCompressed = compress(data)
 
     # Encrypt data using chacha20
     # https://git.sr.ht/~ehmry/chacha20
-    ncDebug("ncEncodeMessage(), encrypt message")
+    ncDebug("ncEncodeMessage(), encrypt message", 2)
     let encryptedMessage = chacha20(dataCompressed, key, nonce)
-    ncDebug("ncEncodeMessage(), message encrypted")
+    ncDebug("ncEncodeMessage(), message encrypted", 2)
     return encryptedMessage
 
 proc ncSendMessage(socket: Socket, key: Key, data: string) =
-    ncDebug("ncSendMessage()")
+    ncDebug("ncSendMessage()", 2)
     var nonce: Nonce
 
     for i in 0..<nonce.len():
         nonce[i] = byte(rand(255))
 
-    ncDebug("ncSendMessage(), encode message")
+    ncDebug("ncSendMessage(), encode message", 2)
     let dataEncrypted = ncEncodeMessage(data, key, nonce)
 
     let dataLen = uint32(dataEncrypted.len())
-    ncDebug(fmt("ncSendMessage(), dataLen: {dataLen}"))
+    ncDebug(fmt("ncSendMessage(), dataLen: {dataLen}"), 2)
     # Convert integer value to binary data
     let dataLenStr = ncIntToStr(dataLen)
 
     # Send data length to socket
-    ncDebug("ncSendMessage(), send message length")
+    ncDebug("ncSendMessage(), send message length", 2)
     socket.send(dataLenStr)
 
     let nonceStr = ncNonceToStr(nonce)
 
     # Send nonce to socket
-    ncDebug("ncSendMessage(), send nonce")
+    ncDebug("ncSendMessage(), send nonce", 2)
     socket.send(nonceStr)
 
     # Send the encrypted data to socket
-    ncDebug("ncSendMessage(), send message")
+    ncDebug("ncSendMessage(), send message", 2)
     socket.send(dataEncrypted)
-    ncDebug("ncSendMessage(), message sent")
+    ncDebug("ncSendMessage(), message sent", 2)
 
 proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageToNode) =
-    ncDebug("ncSendNodeMessage()")
+    ncDebug("ncSendNodeMessage()", 2)
     # Serialize using Flatty
     # https://github.com/treeform/flatty
     let data = toFlatty(nodeMessage)
@@ -178,11 +178,10 @@ proc ncSendMessageToNode*(nodeSocket: Socket, key: Key, nodeMessage: NCMessageTo
     ncSendMessage(nodeSocket, key, data)
 
 proc ncSendMessageToServer*(serverSocket: Socket, key: Key, serverMessage: NCMessageToServer) =
-    ncDebug("ncSendServerMessage()")
+    ncDebug("ncSendServerMessage()", 2)
     # Serialize using Flatty
     # https://github.com/treeform/flatty
     let data = toFlatty(serverMessage)
 
     ncSendMessage(serverSocket, key, data)
-
 

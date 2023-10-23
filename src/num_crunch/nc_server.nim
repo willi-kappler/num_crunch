@@ -70,7 +70,7 @@ proc checkNodesHeartbeat[T](self: ptr NCServer[T]) {.thread.} =
             break
 
 proc createNewNodeId[T](self: ptr NCServer[T]): NCNodeID =
-    ncInfo("NCServer.createNewNodeId()")
+    ncDebug("NCServer.createNewNodeId()", 2)
 
     result = ncNewNodeId()
     var quit = false
@@ -86,7 +86,7 @@ proc createNewNodeId[T](self: ptr NCServer[T]): NCNodeID =
     ncDebug(fmt("NCServer.createNewNodeId(), id: {result}"))
 
 proc validNodeId[T](self: ptr NCServer[T], id: NCNodeID): bool =
-    ncDebug(fmt("NCServer.validNodeId(), id: {id}"))
+    ncDebug(fmt("NCServer.validNodeId(), id: {id}"), 2)
 
     result = false
 
@@ -96,13 +96,13 @@ proc validNodeId[T](self: ptr NCServer[T], id: NCNodeID): bool =
             break
 
 proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
-    ncInfo("NCServer.handleClientInner()")
+    ncDebug("NCServer.handleClientInner()", 2)
 
     let (clientAddr, clientPort) = client.getPeerAddr()
     ncDebug(fmt("NCServer.handleClientInner(), connection from: {clientAddr}, port: {clientPort.uint16}"))
 
     let serverMessage = ncReceiveMessageFromNode(client, self.key)
-    ncDebug("NCServer.handleClientInner(), message from node received")
+    ncDebug("NCServer.handleClientInner(), message from node received", 2)
 
     if self.dataProcessor.isFinished():
         ncInfo("NCServer.handleClientInner(), work is done, exit now!")
@@ -123,7 +123,7 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
         let data = ncToBytes((newId, initData))
         let message = NCMessageToNode(kind: NCNodeMsgKind.welcome, data: data)
         ncSendMessageToNode(client, self.key, message)
-        ncDebug("NCServer.handleClientInner(), new node was sent")
+        ncDebug(fmt("NCServer.handleClientInner(), new node id was sent: {newId}"), 2)
 
         # Add the new node id to the list of active nodes
         self.nodes.add((newId, getTime()))
@@ -132,25 +132,25 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
         ncDebug("NCServer.handleClientInner(), node needs data")
 
         if self.validNodeId(serverMessage.id):
-            ncDebug(fmt("NCServer.handleClientInner(), node id valid: {serverMessage.id}"))
+            ncDebug(fmt("NCServer.handleClientInner(), node id valid: {serverMessage.id}"), 2)
             # Send new data back to node
             let newData = self.dataProcessor.getNewData(serverMessage.id)
             let message = NCMessageToNode(kind: NCNodeMsgKind.newData, data: newData)
             ncSendMessageToNode(client, self.key, message)
-            ncDebug("NCServer.handleClientInner(), new data was sent")
+            ncDebug("NCServer.handleClientInner(), new data was sent", 2)
         else:
-            ncDebug(fmt("NCServer.handleClientInner(), node id invalid: {serverMessage.id}"))
+            ncError(fmt("NCServer.handleClientInner(), node id invalid: {serverMessage.id}"))
 
     of NCServerMsgKind.processedData:
         ncDebug("NCServer.handleClientInner(), node has processed data")
 
         if self.validNodeId(serverMessage.id):
-            ncDebug(fmt("NCServer.handleClientInner(), node id valid: {serverMessage.id}"))
+            ncDebug(fmt("NCServer.handleClientInner(), node id valid: {serverMessage.id}"), 2)
             # Store processed data from node
             self.dataProcessor.collectData(serverMessage.id, serverMessage.data)
-            ncDebug("NCServer.handleClientInner(), data has been collected")
+            ncDebug("NCServer.handleClientInner(), data has been collected", 2)
         else:
-            ncDebug(fmt("NCServer.handleClientInner(), node id invalid: {serverMessage.id}"))
+            ncError(fmt("NCServer.handleClientInner(), node id invalid: {serverMessage.id}"))
 
     of NCServerMsgKind.heartbeat:
         ncDebug("NCServer.handleClientInner(), node sends heartbeat")
@@ -159,7 +159,7 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
             if self.nodes[i][0] == serverMessage.id:
                 self.nodes[i][1] = getTime()
                 break
-        ncDebug("NCServer.handleClientInner(), heartbeat was processed")
+        ncDebug("NCServer.handleClientInner(), heartbeat was processed", 2)
 
     of NCServerMsgKind.checkHeartbeat:
         ncDebug("NCServer.handleClientInner(), check heartbeat times for all inodes")
@@ -170,10 +170,10 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
 
         for n in self.nodes:
             if maxDuration < (currentTime - n[1]):
-                ncDebug(fmt("NCServer.handleClientInner(), node is not sending heartbeat message: {n[0]}"))
+                ncInfo(fmt("NCServer.handleClientInner(), node is not sending heartbeat message: {n[0]}"))
                 # Let data processor know that this node seems dead
                 self.dataProcessor.maybeDeadNode(n[0])
-        ncDebug("NCServer.handleClientInner(), check heartbeat finished")
+        ncDebug("NCServer.handleClientInner(), check heartbeat finished", 2)
 
     of NCServerMsgKind.getStatistics:
         ncDebug("NCServer.handleClientInner(), send some statistics")
@@ -183,10 +183,10 @@ proc handleClientInner[T](self: ptr NCServer[T], client: Socket) =
         ncInfo("NCServer.handleClientInner(), force quit")
         self.quit.store(true)
 
-    ncDebug("NCServer.handleClientInner(): done")
+    ncDebug("NCServer.handleClientInner(): done", 2)
 
 proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
-    ncInfo("NCServer.handleClient()")
+    ncDebug("NCServer.handleClient()", 2)
     let threadId = getThreadId()
     ncDebug(fmt("NCServer.handleClient(), thread id: {threadId}"))
 
@@ -205,12 +205,12 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
             let msg = getCurrentExceptionMsg()
             ncError(fmt("NCServer.handleClient(), an error occurred: {msg}, exit thread"))
 
-    ncDebug("NCServer.handleclient(), close client / node socket")
+    ncDebug("NCServer.handleclient(), close client / node socket", 2)
     client.close()
-    ncDebug("NCServer.handleclient(), release lock")
+    ncDebug("NCServer.handleclient(), release lock", 2)
     release(self.serverLock)
-    ncDebug("NCServer.handleclient(), lock released")
-    ncDebug(fmt("NCServer.handleclient(), node finished, thread id: {threadId}"))
+    ncDebug("NCServer.handleclient(), lock released", 2)
+    ncDebug(fmt("NCServer.handleclient(), node finished, thread id: {threadId}"), 2)
 
 proc runServer*[T](self: var NCServer[T]) =
     ncInfo("NCServer.runServer()")
@@ -257,7 +257,7 @@ proc runServer*[T](self: var NCServer[T]) =
                 let selfPtr = unsafeAddr(self)
                 createThread(clientThreads[i], handleClient, (selfPtr, client))
                 assignedThreads[i] = true
-                ncDebug(fmt("NCServer.runServer(), thread pool index: {i}, thread created"))
+                ncDebug(fmt("NCServer.runServer(), thread pool index: {i}, thread created"), 2)
                 break
 
     acquire(self.serverLock)
