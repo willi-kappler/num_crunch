@@ -6,4 +6,5 @@ tests/*
 !tests/*.nim
 !tests/*.nims
 !tests/*.ini
+*.old
 
