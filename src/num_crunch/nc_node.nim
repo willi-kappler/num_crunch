@@ -1,10 +1,10 @@
 
 # Nim std imports
-import std/net
 import std/typedthreads
 
 from std/os import sleep
 from std/strformat import fmt
+from std/net import Port
 
 # External imports
 from chacha20 import Key
@@ -14,41 +14,40 @@ import private/nc_message
 import nc_config
 import nc_log
 import nc_nodeid
-import nc_common
+#import nc_common
 
 type
-    NCNode*[T: NCDPNode] = object
+    NCNode* = object
         serverAddr: string
         serverPort: Port
         key: Key
         # In seconds
         heartbeatTimeout: uint16
         nodeId: NCNodeID
-        dataProcessor: T
 
     NCDPNode* = concept dp
         dp.init(type seq[byte])
         dp.processData(type seq[byte]) is seq[byte]
 
-proc sendHeartbeat(self: ptr NCNode) {.thread.} =
+var ncNodeInstance: NCNode
+
+var dpInstance: NCDPNode
+
+proc sendHeartbeat() {.thread.} =
     ncDebug("NCNode.sendHeartbeat()", 2)
 
-    let timeOut = uint(self.heartbeatTimeout * 1000)
-
-    let heartbeatMessage = NCMessageToServer(
-        kind: NCServerMsgKind.heartbeat,
-        id: self.nodeId)
+    let timeOut = int(ncNodeInstance.heartbeatTimeout * 1000)
+    let serverAddr = ncNodeInstance.serverAddr
+    let serverPort = ncNodeInstance.serverPort
+    let key = ncNodeInstance.key
+    let nodeId = ncNodeInstance.nodeId
 
     while true:
-        sleep(int(timeOut))
+        sleep(timeOut)
 
         # Send heartbeat message to server
-        ncDebug(fmt("NCNode.sendHeartbeat(), Node {self.nodeId} sends heartbeat message to server"))
-        let nodeSocket = newSocket()
-        nodeSocket.connect(self.serverAddr, self.serverPort)
-        ncSendMessageToServer(nodeSocket, self.key, heartbeatMessage)
-        let serverResponse = ncReceiveMessageFromServer(nodeSocket, self.key)
-        nodeSocket.close()
+        ncDebug(fmt("NCNode.sendHeartbeat(), Node {nodeId} sends heartbeat message to server"))
+        let serverResponse = ncSendHeartbeatMessage(serverAddr, serverPort, key, nodeId)
 
         case serverResponse.kind:
         of NCNodeMsgKind.quit:
@@ -61,22 +60,21 @@ proc sendHeartbeat(self: ptr NCNode) {.thread.} =
             ncError(fmt("NCNode.sendHeartbeat(), Unknown response: {serverResponse.kind}"))
             break
 
-proc runNode*(self: var NCNode) =
+proc runNode*() =
     ncInfo("NCNode.runNode()")
 
-    let nodeSocket = newSocket()
-    let registerMessage = NCMessageToServer(kind: NCServerMsgKind.registerNewNode)
-    nodeSocket.connect(self.serverAddr, self.serverPort)
-    ncSendMessageToServer(nodeSocket, self.key, registerMessage)
-    let serverResponse = ncReceiveMessageFromServer(nodeSocket, self.key)
-    nodeSocket.close()
+    let serverAddr = ncNodeInstance.serverAddr
+    let serverPort = ncNodeInstance.serverPort
+    let key = ncNodeInstance.key
+
+    let serverResponse = ncRegisterNewNode(serverAddr, serverPort, key)
 
     case serverResponse.kind:
     of NCNodeMsgKind.welcome:
         let (nodeId, initData) = ncFromBytes(serverResponse.data, (NCNodeID, seq[byte]))
         ncInfo(fmt("NCNode.runNode(), Got new node id: {nodeId}"))
-        self.nodeId = nodeId
-        self.dataProcessor.init(initData)
+        ncNodeInstance.nodeId = nodeId
+        dpInstance.init(initData)
     of NCNodeMsgKind.quit:
         ncInfo("NCNode.runNode(), All work is done, will exit now")
         return
@@ -84,22 +82,15 @@ proc runNode*(self: var NCNode) =
         ncError(fmt("NCNode.runNode(), Unknown response: {serverResponse.kind}"))
         return
 
-    var hbThreadId: Thread[ptr NCNode]
-    createThread(hbThreadId, sendHeartbeat, unsafeAddr(self))
+    var hbThreadId: Thread
+    createThread(hbThreadId, sendHeartbeat)
 
-    let needDataMessage = NCMessageToServer(
-        kind: NCServerMsgKind.needsData,
-        id: self.nodeId)
+    let nodeId = ncNodeInstance.nodeId
 
     while true:
-        # Do not flood the server with requests
+        # # Do not flood the server with requests
         sleep(100)
-        ncDebug("NCNode.runNode(), Send message to server: need new data")
-        let nodeSocket = newSocket()
-        nodeSocket.connect(self.serverAddr, self.serverPort)
-        ncSendMessageToServer(nodeSocket, self.key, needDataMessage)
-        let serverResponse = ncReceiveMessageFromServer(nodeSocket, self.key)
-        nodeSocket.close()
+        let serverResponse = ncNodeNeedsData(serverAddr, serverPort, key, nodeId)
 
         case serverResponse.kind:
         of NCNodeMsgKind.quit:
@@ -107,17 +98,10 @@ proc runNode*(self: var NCNode) =
             break
         of NCNodeMsgKind.newData:
             ncDebug("NCNode.runNode(), Got new data to process")
-            let processedData = self.dataProcessor.processData(serverResponse.data)
+            let processedData = dpInstance.processData(serverResponse.data)
             ncDebug("NCNode.runNode(), Processing done, send result back to server", 2)
-            let processedDataMessage = NCMessageToServer(
-                kind: NCServerMsgKind.processedData,
-                data: processedData,
-                id: self.nodeId)
-            let nodeSocket = newSocket()
-            nodeSocket.connect(self.serverAddr, self.serverPort)
-            ncSendMessageToServer(nodeSocket, self.key, processedDataMessage)
-            let serverResponse = ncReceiveMessageFromServer(nodeSocket, self.key)
-            nodeSocket.close()
+
+            let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processData)
 
             case serverResponse.kind:
             of NCNodeMsgKind.quit:
@@ -134,17 +118,17 @@ proc runNode*(self: var NCNode) =
             break
 
     ncDebug("NCNode.runNode(), Waiting for other thread to finish...")
-    # Try to join the heartbeat thread
 
+    # Try to join the heartbeat thread
     if not hbThreadId.running():
         joinThread(hbThreadId)
 
     ncInfo("NCNode.runNode(), Will exit now!")
 
-proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNode[T] =
+proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration) =
     ncInfo("ncInitNode(config)")
 
-    var ncNode = NCNode[T](dataProcessor: dataProcessor)
+    var ncNode = NCNode()
 
     ncNode.serverPort = ncConfig.serverPort
     ncNode.serverAddr = ncConfig.serverAddr
@@ -157,9 +141,11 @@ proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration): NCNo
     ncNode.key = key[]
     ncNode.heartbeatTimeout = ncConfig.heartbeatTimeout
 
-    return ncNode
+    ncNodeInstance = ncNode
 
-proc ncInitNode*[T: NCDPNode](dataProcessor: T, filename: string): NCNode[T] =
+    dpInstance = dataProcessor
+
+proc ncInitNode*[T: NCDPNode](dataProcessor: T, filename: string) =
     ncInfo(fmt("ncInitNode({fileName})"))
 
     let config = ncLoadConfig(fileName)
