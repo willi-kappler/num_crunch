@@ -21,20 +21,19 @@ type
         serverAddr: string
         serverPort: Port
         key: Key
-        # In seconds
-        heartbeatTimeout: uint16
+        heartbeatTimeout: uint16 # In seconds
         nodeId: NCNodeID
 
-    NCDataProcessor = ref object of RootObj
+    NCNodeDataProcessor* = ref object of RootObj
 
 var ncNodeInstance: NCNode
 
-var ncDPInstance: NCDataProcessor
+var ncDPInstance: NCNodeDataProcessor
 
-method init(self: var NCDataProcessor, data: seq[byte]) {.base.} =
+method init(self: var NCNodeDataProcessor, data: seq[byte]) {.base.} =
     discard
 
-method processData(self: var NCDataProcessor, data: seq[byte]): seq[byte] {.base.} =
+method processData(self: var NCNodeDataProcessor, data: seq[byte]): seq[byte] {.base.} =
     quit("You must override this method")
 
 proc sendHeartbeat() {.thread.} =
@@ -129,7 +128,7 @@ proc runNode*() =
 
     ncInfo("NCNode.runNode(), Will exit now!")
 
-proc ncInitNode*(dataProcessor: NCDataProcessor, ncConfig: NCConfiguration) =
+proc ncInitNode*(dataProcessor: NCNodeDataProcessor, ncConfig: NCConfiguration) =
     ncInfo("ncInitNode(config)")
 
     var ncNode = NCNode()
@@ -148,7 +147,7 @@ proc ncInitNode*(dataProcessor: NCDataProcessor, ncConfig: NCConfiguration) =
     ncNodeInstance = ncNode
     ncDPInstance = dataProcessor
 
-proc ncInitNode*(dataProcessor: NCDataProcessor, filename: string) =
+proc ncInitNode*(dataProcessor: NCNodeDataProcessor, filename: string) =
     ncInfo(fmt("ncInitNode({fileName})"))
 
     let config = ncLoadConfig(fileName)
