@@ -1,7 +1,15 @@
 # Common helper functions and types
 from flatty import fromFlatty, toFlatty
 
-from private/nc_message import ncStrToBytes, ncBytesToStr
+func ncStrToBytes*(s: string): seq[byte] =
+    @(s.toOpenArrayByte(0, s.high()))
+
+func ncBytesToStr*(s: seq[byte]): string =
+    let l = s.len()
+    result = newString(l)
+
+    if l > 0:
+        copyMem(unsafeAddr(result[0]), unsafeAddr(s[0]), l)
 
 proc ncToBytes*[T](data: T): seq[byte] =
     let encStr = toFlatty(data)

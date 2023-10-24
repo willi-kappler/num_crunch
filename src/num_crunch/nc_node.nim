@@ -14,7 +14,7 @@ import private/nc_message
 import nc_config
 import nc_log
 import nc_nodeid
-#import nc_common
+import nc_common
 
 type
     NCNode* = object
@@ -31,16 +31,16 @@ type
 
 var ncNodeInstance: NCNode
 
-var dpInstance: NCDPNode
+#var ncDPInstance: ptr
 
 proc sendHeartbeat() {.thread.} =
     ncDebug("NCNode.sendHeartbeat()", 2)
-
-    let timeOut = int(ncNodeInstance.heartbeatTimeout * 1000)
-    let serverAddr = ncNodeInstance.serverAddr
-    let serverPort = ncNodeInstance.serverPort
-    let key = ncNodeInstance.key
-    let nodeId = ncNodeInstance.nodeId
+    {.cast(gcsafe).}:
+        let timeOut = int(ncNodeInstance.heartbeatTimeout * 1000)
+        let serverAddr = ncNodeInstance.serverAddr
+        let serverPort = ncNodeInstance.serverPort
+        let key = ncNodeInstance.key
+        let nodeId = ncNodeInstance.nodeId
 
     while true:
         sleep(timeOut)
@@ -74,7 +74,7 @@ proc runNode*() =
         let (nodeId, initData) = ncFromBytes(serverResponse.data, (NCNodeID, seq[byte]))
         ncInfo(fmt("NCNode.runNode(), Got new node id: {nodeId}"))
         ncNodeInstance.nodeId = nodeId
-        dpInstance.init(initData)
+        #ncDPInstance.init(initData)
     of NCNodeMsgKind.quit:
         ncInfo("NCNode.runNode(), All work is done, will exit now")
         return
@@ -82,7 +82,7 @@ proc runNode*() =
         ncError(fmt("NCNode.runNode(), Unknown response: {serverResponse.kind}"))
         return
 
-    var hbThreadId: Thread
+    var hbThreadId: Thread[void]
     createThread(hbThreadId, sendHeartbeat)
 
     let nodeId = ncNodeInstance.nodeId
@@ -98,10 +98,11 @@ proc runNode*() =
             break
         of NCNodeMsgKind.newData:
             ncDebug("NCNode.runNode(), Got new data to process")
-            let processedData = dpInstance.processData(serverResponse.data)
+            #let processedData = ncDPInstance.processData(serverResponse.data)
+            let processedData: seq[byte] = @[]
             ncDebug("NCNode.runNode(), Processing done, send result back to server", 2)
 
-            let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processData)
+            let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processedData)
 
             case serverResponse.kind:
             of NCNodeMsgKind.quit:
@@ -142,8 +143,8 @@ proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration) =
     ncNode.heartbeatTimeout = ncConfig.heartbeatTimeout
 
     ncNodeInstance = ncNode
-
-    dpInstance = dataProcessor
+    #ncDPInstance = allocShared0(sizeof(T))
+    #ncDPInstance = dataProcessor
 
 proc ncInitNode*[T: NCDPNode](dataProcessor: T, filename: string) =
     ncInfo(fmt("ncInitNode({fileName})"))
