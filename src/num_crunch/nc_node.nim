@@ -25,13 +25,17 @@ type
         heartbeatTimeout: uint16
         nodeId: NCNodeID
 
-    NCDPNode* = concept dp
-        dp.init(type seq[byte])
-        dp.processData(type seq[byte]) is seq[byte]
+    NCDataProcessor = ref object of RootObj
 
 var ncNodeInstance: NCNode
 
-#var ncDPInstance: ptr
+var ncDPInstance: NCDataProcessor
+
+method init(self: var NCDataProcessor, data: seq[byte]) {.base.} =
+    discard
+
+method processData(self: var NCDataProcessor, data: seq[byte]): seq[byte] {.base.} =
+    quit("You must override this method")
 
 proc sendHeartbeat() {.thread.} =
     ncDebug("NCNode.sendHeartbeat()", 2)
@@ -74,7 +78,7 @@ proc runNode*() =
         let (nodeId, initData) = ncFromBytes(serverResponse.data, (NCNodeID, seq[byte]))
         ncInfo(fmt("NCNode.runNode(), Got new node id: {nodeId}"))
         ncNodeInstance.nodeId = nodeId
-        #ncDPInstance.init(initData)
+        ncDPInstance.init(initData)
     of NCNodeMsgKind.quit:
         ncInfo("NCNode.runNode(), All work is done, will exit now")
         return
@@ -98,8 +102,7 @@ proc runNode*() =
             break
         of NCNodeMsgKind.newData:
             ncDebug("NCNode.runNode(), Got new data to process")
-            #let processedData = ncDPInstance.processData(serverResponse.data)
-            let processedData: seq[byte] = @[]
+            let processedData = ncDPInstance.processData(serverResponse.data)
             ncDebug("NCNode.runNode(), Processing done, send result back to server", 2)
 
             let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processedData)
@@ -126,7 +129,7 @@ proc runNode*() =
 
     ncInfo("NCNode.runNode(), Will exit now!")
 
-proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration) =
+proc ncInitNode*(dataProcessor: NCDataProcessor, ncConfig: NCConfiguration) =
     ncInfo("ncInitNode(config)")
 
     var ncNode = NCNode()
@@ -143,10 +146,9 @@ proc ncInitNode*[T: NCDPNode](dataProcessor: T, ncConfig: NCConfiguration) =
     ncNode.heartbeatTimeout = ncConfig.heartbeatTimeout
 
     ncNodeInstance = ncNode
-    #ncDPInstance = allocShared0(sizeof(T))
-    #ncDPInstance = dataProcessor
+    ncDPInstance = dataProcessor
 
-proc ncInitNode*[T: NCDPNode](dataProcessor: T, filename: string) =
+proc ncInitNode*(dataProcessor: NCDataProcessor, filename: string) =
     ncInfo(fmt("ncInitNode({fileName})"))
 
     let config = ncLoadConfig(fileName)
