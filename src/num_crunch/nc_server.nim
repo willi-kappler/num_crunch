@@ -225,6 +225,8 @@ proc handleClient[T](tp: (ptr NCServer[T], Socket)) {.thread.} =
     ncDebug("NCServer.handleClient(), release lock", 2)
     release(self.serverLock)
     ncDebug("NCServer.handleClient(), lock released", 2)
+    # Give the nodes a chance to receive the message
+    sleep(100)
     ncDebug("NCServer.handleClient(), close client / node socket", 2)
     client.close()
     ncDebug(fmt("NCServer.handleClient(), node finished, thread id: {threadId}"), 2)

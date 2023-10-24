@@ -92,6 +92,8 @@ proc runNode*(self: var NCNode) =
         id: self.nodeId)
 
     while true:
+        # Do not flood the server with requests
+        sleep(100)
         ncDebug("NCNode.runNode(), Send message to server: need new data")
         let nodeSocket = newSocket()
         nodeSocket.connect(self.serverAddr, self.serverPort)

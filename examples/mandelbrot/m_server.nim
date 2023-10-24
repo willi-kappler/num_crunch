@@ -1,5 +1,9 @@
 
 
+# Nim std imports
+import std/options
+
+
 # Local imports
 #import num_crunch/nc_nodeid
 #import num_crunch/nc_array2d
@@ -25,11 +29,16 @@ proc getInitData*(self: var MandelServerDP): seq[byte] =
     return ncToBytes(self.initData)
 
 proc getNewData*(self: var MandelServerDP, n: NCNodeID): seq[byte] =
-    return ncToBytes(self.data.nextUnprocessedTile(n))
+    let data = self.data.nextUnprocessedTile(n)
+    if data.isNone():
+        return @[]
+    else:
+        return ncToBytes(data.get())
 
 proc collectData*(self: var MandelServerDP, n: NCNodeID, data: seq[byte]) =
-    let processedData = ncFromBytes(data, MandelResult)
-    self.data.collectData(n, processedData.pixelData)
+    if data.len() > 0:
+        let processedData = ncFromBytes(data, MandelResult)
+        self.data.collectData(n, processedData.pixelData)
 
 proc maybeDeadNode*(self: var MandelServerDP, n: NCNodeID) =
     self.data.maybeDeadNode(n)
@@ -39,17 +48,14 @@ proc saveData*(self: var MandelServerDP) =
     discard
 
 proc initMandelServerDP*(): MandelServerDP =
-    # Image size: 512 x 512
-    # Number of tiles: 4 * 4 = 16
-
     # TODO: read in these values from a configuration file
-    let imgWidth: uint32 = 4096
-    let imgHeight: uint32 = 4096
+    let tileWidth: uint32 = 1024
+    let tileHeight: uint32 = 1024
     let numTilesX: uint32 = 4
     let numTilesY: uint32 = 4
-    let tileWidth: uint32 = imgWidth div numTilesX
-    let tileHeight: uint32 = imgHeight div numTilesY
     let data = ncNewArray2D[uint32](tileWidth, tileHeight, numTilesX, numTilesY)
+    let imgWidth: uint32 = tileWidth * numTilesX
+    let imgHeight: uint32 = tileHeight * numTilesY
     let re1 = 0.0
     let re2 = 0.0
     let reStep = (re2 - re1) / float64(imgWidth)

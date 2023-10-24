@@ -6,11 +6,11 @@ TODO:
 - Add more examples
 - In NCServer.handleClient(): Use lock only when needed
 - Write png image file for mandel example, use https://github.com/jangko/nimPNG
-- Array2D: next unprocessed tile: return option
 
 Done:
 # Finish server code
 # Finish node code
 # Use log() instead of echo() for debug outputs throughout the code
+# Array2D: next unprocessed tile: return option
 
 

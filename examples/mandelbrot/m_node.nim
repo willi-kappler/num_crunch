@@ -65,9 +65,13 @@ proc processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
     let data = ncToBytes(self.data)
     return data
 
-proc processData*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
+proc processData*(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
     ncDebug("processData()", 2)
-    let (tx, ty) = ncFromBytes(input, (uint32, uint32))
+    if inputData.len() == 0:
+        ncDebug("No more data to process")
+        return @[]
+
+    let (tx, ty) = ncFromBytes(inputData, (uint32, uint32))
     ncDebug(fmt("processData(), tx: {tx}, ty: {ty}"))
 
     let tw = self.initData.tileWidth

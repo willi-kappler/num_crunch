@@ -1,6 +1,7 @@
 
 # Nim std imports
 from std/strformat import fmt
+import std/options
 
 # Local imports
 import nc_nodeid
@@ -129,10 +130,12 @@ func isFinished*[T](self: NCArray2D[T]): bool =
             result = false
             break
 
-proc nextUnprocessedTile*[T](self: var NCArray2D[T], nodeId: NCNodeId): (uint32, uint32) =
+proc nextUnprocessedTile*[T](self: var NCArray2D[T], nodeId: NCNodeId): Option[(uint32, uint32)] =
     ncDebug(fmt("NCArray2D.nextUnprocessedTile(), {nodeId}"))
     var x: uint32 = 0
     var y: uint32 = 0
+
+    result = none((uint32, uint32))
 
     for i in 0..<self.tileStatus.len():
         if self.tileStatus[i].status == NCTileStatusKind.unprocessed:
@@ -140,7 +143,7 @@ proc nextUnprocessedTile*[T](self: var NCArray2D[T], nodeId: NCNodeId): (uint32,
             self.tileStatus[i].nodeId = nodeId
             self.tileStatus[i].tileX = x
             self.tileStatus[i].tileY = y
-            result = (x, y)
+            result = some((x, y))
             break
 
         x = x + 1
