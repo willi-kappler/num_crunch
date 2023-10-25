@@ -11,66 +11,66 @@ from supersnappy import SnappyError
 # Local imports
 import num_crunch/private/nc_message
 import num_crunch/nc_log
+import num_crunch/nc_nodeid
 
 proc test1() =
     # Check normal function
     let data = "This is a secret message"
-    let nonceStr = "123456789012"
     let keyStr = "12345678901234567890123456789012"
 
-    var nonce = cast[ptr(Nonce)](unsafeAddr(nonceStr[0]))
     var key = cast[ptr(Key)](unsafeAddr(keyStr[0]))
 
-    let encodedData = ncEncodeMessage(data, key[], nonce[])
+    let encodedData = ncEncodeMessage(data, key[])
     assert(data != encodedData)
 
-    let decodedData = ncDecodeMessage(encodedData, key[], nonce[])
+    let decodedData = ncDecodeMessage(encodedData, key[])
     assert(data == decodedData)
 
 proc test2() =
-    # Invalid nonce
-    let data = "This is a secret message"
-    let nonceStr1 = "123456789012"
-    let nonceStr2 = "123456789011"
+    # Encode server message
+    let nodeId = ncNewNodeId()
+    let data: seq[byte] = @[2, 9, 4, 6, 1]
+    let message = NCServerMessage(id: nodeId, data: data)
     let keyStr = "12345678901234567890123456789012"
 
-    var nonce1 = cast[ptr(Nonce)](unsafeAddr(nonceStr1[0]))
-    var nonce2 = cast[ptr(Nonce)](unsafeAddr(nonceStr2[0]))
     var key = cast[ptr(Key)](unsafeAddr(keyStr[0]))
 
-    let encodedData = ncEncodeMessage(data, key[], nonce1[])
-    assert(data != encodedData)
+    let encodedMessage = ncEncodeServerMessage(message, key[])
+    let decodedMessage = ncDecodeServerMessage(encodedMessage, key[])
 
-    doAssertRaises(SnappyError):
-        let decodedData = ncDecodeMessage(encodedData, key[], nonce2[])
-        assert(data != decodedData)
+    assert(nodeId == decodedMessage.id)
+    assert(data == decodedMessage.data)
 
 proc test3() =
+    # Encode node message
+    let messageKind = NCNodeMsgKind.newData
+    let data: seq[byte] = @[5, 6, 1, 0, 9]
+    let message = NCNodeMessage(kind: messageKind, data: data)
+    let keyStr = "12345678901234567890123456789012"
+
+    var key = cast[ptr(Key)](unsafeAddr(keyStr[0]))
+
+    let encodedMessage = ncEncodeNodeMessage(message, key[])
+    let decodedMessage = ncDecodeNodeMessage(encodedMessage, key[])
+
+    assert(messageKind == decodedMessage.kind)
+    assert(data == decodedMessage.data)
+
+proc test4() =
     # Invalid key
     let data = "This is a secret message"
-    let nonceStr = "123456789012"
     let keyStr1 = "12345678901234567890123456789012"
     let keyStr2 = "12345678901234567890123456789011"
 
-    var nonce = cast[ptr(Nonce)](unsafeAddr(nonceStr[0]))
     var key1 = cast[ptr(Key)](unsafeAddr(keyStr1[0]))
     var key2 = cast[ptr(Key)](unsafeAddr(keyStr2[0]))
 
-    let encodedData = ncEncodeMessage(data, key1[], nonce[])
+    let encodedData = ncEncodeMessage(data, key1[])
     assert(data != encodedData)
 
     doAssertRaises(SnappyError):
-        let decodedData = ncDecodeMessage(encodedData, key2[], nonce[])
+        let decodedData = ncDecodeMessage(encodedData, key2[])
         assert(data != decodedData)
-
-proc test4() =
-    # Test integer conversion:
-    let i: uint32 = 35
-    let s = ncIntToStr(i)
-    assert(s.len() == 4)
-
-    let j = ncStrToInt(s)
-    assert(j == i)
 
 when isMainModule:
     let logger = newFileLogger("tests/test_nc_message.log", fmtStr=verboseFmtStr)
