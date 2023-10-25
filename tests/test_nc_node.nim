@@ -13,10 +13,7 @@ type
     MyDP = ref object of NCNodeDataProcessor
         data: seq[byte]
 
-#proc init(self: var MyDP, data: seq[byte]) =
-#    discard
-
-proc processData(self: var MyDP, input: seq[byte]): seq[byte] =
+method processData(self: var MyDP, input: seq[byte]): seq[byte] =
     self.data
 
 proc test1() =
