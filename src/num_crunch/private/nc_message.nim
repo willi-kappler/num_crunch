@@ -19,19 +19,15 @@ import ../nc_log
 
 type
     NCNodeMsgKind* = enum
-        welcome, newData, quit, ok
+        welcome, newData, quit, ok, unknown
     NCNodeMessage* = object
         kind*: NCNodeMsgKind
         data*: seq[byte]
-    NCMessageToNode* = NCNodeMessage
-    NCMessageFromServer* = NCNodeMessage
 
 type
     NCServerMessage* = object
         id*: NCNodeID
         data*: seq[byte]
-    NCMessageToServer* = NCServerMessage
-    NCMessageFromNode* = NCServerMessage
 
 proc ncEncodeMessage*(message: string, key: Key): string =
     var nonce: Nonce
@@ -79,24 +75,30 @@ proc ncSendHeartbeatMessage*(serverAddr: string, serverPort: Port, key: Key, nod
     let message = NCServerMessage(id: nodeId)
     let response = ncSendMessageToServer(serverAddr, serverPort, key, message, "heartbeat")
 
-    discard
+    return ncDecodeNodeMessage(response, key)
+
+proc ncSendCheckHeartbeatMessage*(serverPort: Port, key: Key): NCNodeMessage =
+    let message = NCServerMessage()
+    let response = ncSendMessageToServer("12.0.0.1", serverPort, key, message, "check_heartbeat")
+
+    return ncDecodeNodeMessage(response, key)
 
 proc ncRegisterNewNode*(serverAddr: string, serverPort: Port, key: Key): NCNodeMessage =
     let message = NCServerMessage()
     let response = ncSendMessageToServer(serverAddr, serverPort, key, message, "register_new_node")
 
-    discard
+    return ncDecodeNodeMessage(response, key)
 
 proc ncNodeNeedsData*(serverAddr: string, serverPort: Port, key: Key, nodeId: NCNodeID): NCNodeMessage =
     let message = NCServerMessage(id: nodeId)
     let response = ncSendMessageToServer(serverAddr, serverPort, key, message, "node_needs_data")
 
-    discard
+    return ncDecodeNodeMessage(response, key)
 
 proc ncSendProcessedData*(serverAddr: string, serverPort: Port, key: Key, nodeId: NCNodeID, processData: seq[byte]): NCNodeMessage =
     let message = NCServerMessage(id: nodeId, data: processData)
     let response = ncSendMessageToServer(serverAddr, serverPort, key, message, "processed_data")
 
-    discard
+    return ncDecodeNodeMessage(response, key)
 
 
