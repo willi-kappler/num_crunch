@@ -186,6 +186,7 @@ proc handleClient(req: Request) {.async.} =
                         ncError(fmt("handleClient(), node id invalid: {message.id}"))
                 of "register_new_node":
                     let newId = createNewNodeId()
+                    ncServerInstance.nodes.add((newId, getTime()))
 
                     ncInfo(fmt("handleClient(), register new node: {newId}"))
 
