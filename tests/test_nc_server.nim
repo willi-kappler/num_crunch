@@ -13,28 +13,28 @@ import num_crunch/nc_server
 
 
 type
-    MyDP = object
+    MyDP = ref object of NCServerDataProcessor
         testCounter: uint8
 
-proc isFinished(self: var MyDP): bool =
+method isFinished(self: var MyDP): bool =
     ncDebug(fmt("isFinished(), testcounter: {self.testCounter}"))
     if self.testcounter > 0:
         self.testCounter = self.testCounter - 1
     result = (self.testCounter == 0)
 
-proc getInitData(self: var MyDP): seq[byte] =
+method getInitData(self: var MyDP): seq[byte] =
     @[]
 
-proc getNewData(self: var MyDP, n: NCNodeID): seq[byte] =
+method getNewData(self: var MyDP, n: NCNodeID): seq[byte] =
     @[]
 
-proc collectData(self: var MyDP, data: seq[byte]) =
+method collectData(self: var MyDP, n: NCNodeID, data: seq[byte]) =
     discard
 
-proc maybeDeadNode(self: var MyDP, n: NCNodeID) =
+method maybeDeadNode(self: var MyDP, n: NCNodeID) =
     discard
 
-proc saveData(self: var MyDP) =
+method saveData(self: var MyDP) =
     discard
 
 proc test1() =
@@ -43,8 +43,7 @@ proc test1() =
     let filename = currentDir & "/config1.ini"
     let dataProcessor = MyDP()
 
-    let server = ncInitServer(dataProcessor, filename)
-    discard server
+    ncInitServer(dataProcessor, filename)
 
 proc test2() =
     # Test init with invalid filename
@@ -53,8 +52,7 @@ proc test2() =
     let dataProcessor = MyDP()
 
     doAssertRaises(IOError):
-        let node = ncInitServer(dataProcessor, filename)
-        discard node
+        ncInitServer(dataProcessor, filename)
 
 proc test3() =
     # Test with no node connected
@@ -62,8 +60,8 @@ proc test3() =
     let filename = currentDir & "/config1.ini"
     let dataProcessor = MyDP(testCounter: 3)
 
-    var server = ncInitServer(dataProcessor, filename)
-    server.runServer()
+    ncInitServer(dataProcessor, filename)
+    ncRunServer()
 
 when isMainModule:
     let logger = newFileLogger("tests/test_nc_server.log", fmtStr=verboseFmtStr)
