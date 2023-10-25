@@ -10,11 +10,11 @@ import num_crunch/nc_log
 import num_crunch/nc_node
 
 type
-    MyDP = object
+    MyDP = ref object of NCNodeDataProcessor
         data: seq[byte]
 
-proc init(self: var MyDP, data: seq[byte]) =
-    discard
+#proc init(self: var MyDP, data: seq[byte]) =
+#    discard
 
 proc processData(self: var MyDP, input: seq[byte]): seq[byte] =
     self.data
@@ -25,7 +25,7 @@ proc test1() =
     let filename = currentDir & "/config1.ini"
     let dataProcessor = MyDP()
 
-    let node = ncInitNode(dataProcessor, filename)
+    ncInitNode(dataProcessor, filename)
 
 proc test2() =
     # Test init with invalid filename
@@ -34,7 +34,7 @@ proc test2() =
     let dataProcessor = MyDP()
 
     doAssertRaises(IOError):
-        let node = ncInitNode(dataProcessor, filename)
+        ncInitNode(dataProcessor, filename)
 
 proc test3() =
     # Test first run without a server
@@ -43,10 +43,10 @@ proc test3() =
     let filename = currentDir & "/config1.ini"
     let dataProcessor = MyDP()
 
-    var node = ncInitNode(dataProcessor, filename)
+    ncInitNode(dataProcessor, filename)
 
     doAssertRaises(OSError):
-        node.runNode()
+        ncRunNode()
 
 when isMainModule:
     let logger = newFileLogger("tests/test_nc_node.log", fmtStr=verboseFmtStr)
