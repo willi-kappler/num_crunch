@@ -63,7 +63,7 @@ proc sendHeartbeat() {.thread.} =
                 ncError(fmt("NCNode.sendHeartbeat(), Unknown response: {serverResponse.kind}"))
                 break
 
-proc runNode*() =
+proc ncRunNode*() =
     ncInfo("NCNode.runNode()")
 
     let serverAddr = ncNodeInstance.serverAddr
