@@ -33,7 +33,7 @@ type
     NCMessageToServer* = NCServerMessage
     NCMessageFromNode* = NCServerMessage
 
-proc ncEncodeMessage(message: string, key: Key): string =
+proc ncEncodeMessage*(message: string, key: Key): string =
     var nonce: Nonce
 
     for i in 0..<nonce.len():
@@ -43,10 +43,27 @@ proc ncEncodeMessage(message: string, key: Key): string =
     let message2 = chacha20(message1, key, nonce)
     let message3 = toFlatty((message2, nonce))
 
-    return encode(message3)
+    #return encode(message3)
+    return message3
 
-proc ncEncodeServerMessage(message: NCServerMessage, key: Key): string =
+proc ncDecodeMessage*(message: string, key: Key): string =
+    let (message1, nonce) = fromFlatty(message, (string, Nonce))
+    let message2 = chacha20(message1, key, nonce)
+    let message3 = uncompress(message2)
+
+    return message3
+
+proc ncEncodeServerMessage*(message: NCServerMessage, key: Key): string =
     return ncEncodeMessage(toFlatty(message), key)
+
+proc ncDecodeServerMessage*(message: string, key: Key): NCServerMessage =
+    return fromFlatty(ncDecodeMessage(message, key), NCServerMessage)
+
+proc ncEncodeNodeMessage*(message: NCNodeMessage, key: Key): string =
+    return ncEncodeMessage(toFlatty(message), key)
+
+proc ncDecodeNodeMessage*(message: string, key: Key): NCNodeMessage =
+    return fromFlatty(ncDecodeMessage(message, key), NCNodeMessage)
 
 proc ncSendMessageToServer(serverAddr: string, serverPort: Port, key: Key, message: NCServerMessage, path: string): string =
     let message = ncEncodeServerMessage(message, key)
