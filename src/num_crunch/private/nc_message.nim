@@ -79,7 +79,7 @@ proc ncSendHeartbeatMessage*(serverAddr: string, serverPort: Port, key: Key, nod
 
 proc ncSendCheckHeartbeatMessage*(serverPort: Port, key: Key): NCNodeMessage =
     let message = NCServerMessage()
-    let response = ncSendMessageToServer("12.0.0.1", serverPort, key, message, "check_heartbeat")
+    let response = ncSendMessageToServer("127.0.0.1", serverPort, key, message, "check_heartbeat")
 
     return ncDecodeNodeMessage(response, key)
 
