@@ -34,7 +34,7 @@ method init(self: var NCNodeDataProcessor, data: seq[byte]) {.base.} =
     discard
 
 method processData(self: var NCNodeDataProcessor, data: seq[byte]): seq[byte] {.base.} =
-    quit("You must override this method")
+    quit("You must override this method: processData")
 
 proc sendHeartbeat() {.thread.} =
     ncDebug("NCNode.sendHeartbeat()", 2)
