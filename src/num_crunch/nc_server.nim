@@ -55,8 +55,11 @@ method saveData*(self: var NCServerDataProcessor) {.base, gcsafe.} =
     quit("You must override this method: saveData")
 
 proc awaitLock() {.async.} =
+    ncDebug("awaitLock()", 2)
+
     while true:
         if tryAcquire(ncServerLock):
+            ncDebug("awaitLock(), success", 2)
             break
         else:
             await sleepAsync(100)
@@ -102,6 +105,7 @@ proc checkNodeHearbeat() {.async.} =
             ncDPInstance[].maybeDeadNode(n[0])
 
     release(ncServerLock)
+    ncDebug("checkNodeHearbeat(), done", 2)
 
 proc handleClient(req: Request) {.async.} =
     ncDebug("handleClient()", 2)
@@ -173,6 +177,8 @@ proc handleClient(req: Request) {.async.} =
     let headers = {"Content-type": "application/data"}
     await req.respond(Http200, encodedMessage, headers.newHttpHeaders())
 
+    ncDebug("handleClient(), done", 2)
+
 proc startHttpServer(port: Port) {.async.} =
     ncInfo("startHttpServer()")
     var server = newAsyncHttpServer()
@@ -182,18 +188,33 @@ proc startHttpServer(port: Port) {.async.} =
 
     # Add a small tolerance to the timeout value
     let hbTimeout: int = (int(ncServerInstance.heartbeatTimeout) * 1000) + 500
+    var hbTimer = sleepAsync(hbTimeout)
+    var serverFuture = server.acceptRequest(handleClient)
+    var jobFinished = false
 
     while true:
+        ncDebug("startHttpServer(), enter loop", 2)
+        jobFinished = ncDPInstance[].isFinished()
+        ncDebug(fmt("startHttpServer(), jobFinished: {jobFinished}"), 2)
+
         if server.shouldAcceptRequest():
-            let hbTimer = sleepAsync(hbTimeout)
-            await (server.acceptRequest(handleClient) or hbTimer)
+            ncDebug("startHttpServer(), server accept request", 2)
+            await (serverFuture or hbTimer)
+            ncDebug("startHttpServer(), await done, check hbTimer", 2)
 
             if hbTimer.finished():
-                await checkNodeHearbeat()
+                ncDebug("startHttpServer(), hbTimer finished", 2)
+                hbTimer = sleepAsync(hbTimeout)
+                if not jobFinished:
+                    await checkNodeHearbeat()
+
+            if serverFuture.finished():
+                # Only when the current future is done a new one can be created
+                serverFuture = server.acceptRequest(handleClient)
         else:
             await sleepAsync(100)
 
-        if ncDPInstance[].isFinished():
+        if jobFinished:
             ncDebug(fmt("startHttpServer(), work is done will exit soon... ({quitCounter})"))
             dec(quitCounter)
             if quitCounter == 0:
