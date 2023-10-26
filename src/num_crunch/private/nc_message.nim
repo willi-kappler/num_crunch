@@ -75,12 +75,6 @@ proc ncSendHeartbeatMessage*(serverAddr: string, serverPort: Port, key: Key, nod
 
     return ncDecodeNodeMessage(response, key)
 
-proc ncSendCheckHeartbeatMessage*(serverPort: Port, key: Key): NCNodeMessage =
-    let message = NCServerMessage()
-    let response = ncSendMessageToServer("127.0.0.1", serverPort, key, message, "check_heartbeat")
-
-    return ncDecodeNodeMessage(response, key)
-
 proc ncRegisterNewNode*(serverAddr: string, serverPort: Port, key: Key): NCNodeMessage =
     let message = NCServerMessage()
     let response = ncSendMessageToServer(serverAddr, serverPort, key, message, "register_new_node")
@@ -98,5 +92,4 @@ proc ncSendProcessedData*(serverAddr: string, serverPort: Port, key: Key, nodeId
     let response = ncSendMessageToServer(serverAddr, serverPort, key, message, "processed_data")
 
     return ncDecodeNodeMessage(response, key)
-
 

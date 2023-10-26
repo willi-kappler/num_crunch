@@ -6,7 +6,6 @@ import std/locks
 import std/asyncdispatch
 import std/asynchttpserver
 
-from std/os import sleep
 from std/strformat import fmt
 from std/random import randomize
 
