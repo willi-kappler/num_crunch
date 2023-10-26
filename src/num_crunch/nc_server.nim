@@ -33,30 +33,30 @@ type
 
     NCServerDataProcessor* = ref object of RootObj
 
-var ncServerInstance: NCServer
+var ncServerInstance: ptr NCServer
 
-var ncDPInstance: NCServerDataProcessor
+var ncDPInstance: ptr NCServerDataProcessor
 
 var ncQuit: Atomic[bool]
 
 var ncServerLock: Lock
 
-method isFinished*(self: var NCServerDataProcessor): bool {.base.} =
+method isFinished*(self: var NCServerDataProcessor): bool {.base, gcsafe.} =
     quit("You must override this method: isFinished")
 
-method getInitData*(self: var NCServerDataProcessor): seq[byte] {.base.} =
+method getInitData*(self: var NCServerDataProcessor): seq[byte] {.base, gcsafe.} =
     quit("You must override this method: getInitData")
 
-method getNewData*(self: var NCServerDataProcessor, id: NCNodeID): seq[byte] {.base.} =
+method getNewData*(self: var NCServerDataProcessor, id: NCNodeID): seq[byte] {.base, gcsafe.} =
     quit("You must override this method: getNewData")
 
-method collectData*(self: var NCServerDataProcessor, id: NCNodeID, data: seq[byte]) {.base.} =
+method collectData*(self: var NCServerDataProcessor, id: NCNodeID, data: seq[byte]) {.base, gcsafe.} =
     quit("You must override this method: collectData")
 
-method maybeDeadNode*(self: var NCServerDataProcessor, id: NCNodeID) {.base.} =
+method maybeDeadNode*(self: var NCServerDataProcessor, id: NCNodeID) {.base, gcsafe.} =
     quit("You must override this method: maybeDeadNode")
 
-method saveData*(self: var NCServerDataProcessor) {.base.} =
+method saveData*(self: var NCServerDataProcessor) {.base, gcsafe.} =
     quit("You must override this method: saveData")
 
 proc checkNodesHeartbeat() {.thread.} =
@@ -68,10 +68,9 @@ proc checkNodesHeartbeat() {.thread.} =
 
     var exitCounter = 0
 
-    {.cast(gcsafe).}:
-        let timeOut = int((ncServerInstance.heartbeatTimeout * 1000) + tolerance)
-        let serverPort = ncServerInstance.serverPort
-        let key = ncServerInstance.key
+    let timeOut = int((ncServerInstance.heartbeatTimeout * 1000) + tolerance)
+    let serverPort = ncServerInstance.serverPort
+    let key = ncServerInstance.key
 
     while true:
         sleep(timeOut)
@@ -125,6 +124,20 @@ proc validNodeId(id: NCNodeID): bool =
             result = true
             break
 
+proc handleClient2(req: Request) {.async.} =
+    ncDebug("handleClient()", 2)
+    await sleepAsync(1000)
+    while true:
+        if tryAcquire(ncServerLock):
+            break
+        else:
+            await sleepAsync(100)
+    let key = ncServerInstance.key
+    release(ncServerLock)
+    if ncDPInstance[].isFinished():
+        ncDebug("handleClient()", 2)
+
+
 proc handleClient(req: Request) {.async.} =
     ncDebug("handleClient()", 2)
 
@@ -134,84 +147,83 @@ proc handleClient(req: Request) {.async.} =
 
     ncDebug(fmt("handleClient(), connection from: {hostname}, path: {path}"))
 
-    {.cast(gcsafe).}:
-        while true:
-            if tryAcquire(ncServerLock):
-                break
-            else:
-                await sleepAsync(100)
-
-        let key = ncServerInstance.key
-        let message = ncDecodeServerMessage(body, key)
-
-        var nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.unknown)
-
-        if ncDPInstance.isFinished():
-            nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.quit)
+    while true:
+        if tryAcquire(ncServerLock):
+            break
         else:
-            case path:
-                of "/heartbeat":
-                    ncDebug(fmt("handleClient(), node sends heartbeat: {message.id}"))
+            await sleepAsync(100)
 
-                    var valid = false
+    let key = ncServerInstance.key
+    let message = ncDecodeServerMessage(body, key)
 
-                    for i in 0..<ncServerInstance.nodes.len():
-                        if ncServerInstance.nodes[i][0] == message.id:
-                            ncServerInstance.nodes[i][1] = getTime()
-                            valid = true
-                            break
+    var nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.unknown)
 
-                    if valid:
-                        nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
-                    else:
-                        ncError(fmt("handleClient(), node id invalid: {message.id}"))
-                of "/check_heartbeat":
-                    ncDebug("handleClient(), check heartbeat of all nodes")
+    if ncDPInstance[].isFinished():
+        nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.quit)
+    else:
+        case path:
+            of "/heartbeat":
+                ncDebug(fmt("handleClient(), node sends heartbeat: {message.id}"))
 
-                    let maxDuration = initDuration(seconds = int64(ncServerInstance.heartbeatTimeout))
-                    let currentTime = getTime()
+                var valid = false
 
-                    for (nId, hbTime) in ncServerInstance.nodes:
-                        if maxDuration < (currentTime - hbTime):
-                            ncInfo(fmt("handleClient(), node is not sending heartbeat message: {nId}"))
-                            # Let data processor know that this node seems dead
-                            ncDPInstance.maybeDeadNode(nId)
+                for i in 0..<ncServerInstance.nodes.len():
+                    if ncServerInstance.nodes[i][0] == message.id:
+                        ncServerInstance.nodes[i][1] = getTime()
+                        valid = true
+                        break
 
+                if valid:
                     nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
-                of "/node_needs_data":
-                    ncDebug(fmt("handleClient(), node needs data: {message.id}"))
-
-                    if validNodeId(message.id):
-                        let newData = ncDPInstance.getNewData(message.id)
-                        nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.newData, data: newData)
-                    else:
-                        ncError(fmt("handleClient(), node id invalid: {message.id}"))
-                of "/processed_data":
-                    ncDebug(fmt("handleClient(), node has processed data: {message.id}"))
-                    
-                    if validNodeId(message.id):
-                        ncDPInstance.collectData(message.id, message.data)
-                        nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
-                    else:
-                        ncError(fmt("handleClient(), node id invalid: {message.id}"))
-                of "/register_new_node":
-                    let newId = createNewNodeId()
-                    ncServerInstance.nodes.add((newId, getTime()))
-
-                    ncInfo(fmt("handleClient(), register new node: {newId}"))
-
-                    let initData = ncDPInstance.getInitData()
-                    let data = ncToBytes((newId, initData))
-
-                    nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.welcome, data: data)
                 else:
-                    ncError(fmt("handleClient(), unknown path: {path}"))
+                    ncError(fmt("handleClient(), node id invalid: {message.id}"))
+            of "/check_heartbeat":
+                ncDebug("handleClient(), check heartbeat of all nodes")
 
-        release(ncServerLock)
+                let maxDuration = initDuration(seconds = int64(ncServerInstance.heartbeatTimeout))
+                let currentTime = getTime()
 
-        let encodedMessage = ncEncodeNodeMessage(nodeMessage, key)
-        let headers = {"Content-type": "application/data"}
-        await req.respond(Http200, encodedMessage, headers.newHttpHeaders())
+                for (nId, hbTime) in ncServerInstance.nodes:
+                    if maxDuration < (currentTime - hbTime):
+                        ncInfo(fmt("handleClient(), node is not sending heartbeat message: {nId}"))
+                        # Let data processor know that this node seems dead
+                        ncDPInstance[].maybeDeadNode(nId)
+
+                nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
+            of "/node_needs_data":
+                ncDebug(fmt("handleClient(), node needs data: {message.id}"))
+
+                if validNodeId(message.id):
+                    let newData = ncDPInstance[].getNewData(message.id)
+                    nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.newData, data: newData)
+                else:
+                    ncError(fmt("handleClient(), node id invalid: {message.id}"))
+            of "/processed_data":
+                ncDebug(fmt("handleClient(), node has processed data: {message.id}"))
+
+                if validNodeId(message.id):
+                    ncDPInstance[].collectData(message.id, message.data)
+                    nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
+                else:
+                    ncError(fmt("handleClient(), node id invalid: {message.id}"))
+            of "/register_new_node":
+                let newId = createNewNodeId()
+                ncServerInstance.nodes.add((newId, getTime()))
+
+                ncInfo(fmt("handleClient(), register new node: {newId}"))
+
+                let initData = ncDPInstance[].getInitData()
+                let data = ncToBytes((newId, initData))
+
+                nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.welcome, data: data)
+            else:
+                ncError(fmt("handleClient(), unknown path: {path}"))
+
+    release(ncServerLock)
+
+    let encodedMessage = ncEncodeNodeMessage(nodeMessage, key)
+    let headers = {"Content-type": "application/data"}
+    await req.respond(Http200, encodedMessage, headers.newHttpHeaders())
 
 proc startHttpServer(port: Port) {.async.} =
     ncInfo("startHttpServer()")
@@ -241,12 +253,20 @@ proc ncRunServer*() =
     waitFor startHttpServer(ncServerInstance.serverPort)
 
     ncInfo("ncRunServer(), save all user data!")
-    ncDPInstance.saveData()
+    ncDPInstance[].saveData()
 
     joinThread(hbThreadId)
     ncDebug("ncRunServer(), hearbeat thread finished")
 
     deinitLock(ncServerLock)
+
+    ncInfo("ncRunServer(), free memory")
+    reset(ncServerInstance.key)
+    reset(ncServerInstance.nodes)
+    deallocShared(ncServerInstance)
+    deallocShared(ncDPInstance)
+
+    ncInfo("ncRunServer(), will exit now")
 
 proc ncInitServer*(dataProcessor: NCServerDataProcessor, ncConfig: NCConfiguration) =
     ncInfo("ncInitServer(config)")
@@ -254,6 +274,7 @@ proc ncInitServer*(dataProcessor: NCServerDataProcessor, ncConfig: NCConfigurati
     # Initiate the random number genertator
     randomize()
 
+    ncServerInstance = createShared(NCServer)
     ncServerInstance.serverPort = ncConfig.serverPort
     # Cast key from string to array[32, byte] for chacha20 (32 bytes)
     let keyStr = ncConfig.secretKey
@@ -266,7 +287,8 @@ proc ncInitServer*(dataProcessor: NCServerDataProcessor, ncConfig: NCConfigurati
     #ncServer.nodes = newSeqOfCap[(NCNodeID, Time)](10)
     ncServerInstance.nodes = @[]
 
-    ncDPInstance = dataProcessor
+    ncDPInstance = createShared(NCServerDataProcessor)
+    moveMem(ncDPInstance, dataProcessor.addr, sizeof(NCServerDataProcessor))
 
 proc ncInitServer*(dataProcessor: NCServerDataProcessor, fileName: string) =
     ncInfo(fmt("ncInitServer({fileName})"))

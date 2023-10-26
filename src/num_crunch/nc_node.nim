@@ -26,9 +26,9 @@ type
 
     NCNodeDataProcessor* = ref object of RootObj
 
-var ncNodeInstance: NCNode
+var ncNodeInstance: ptr NCNode
 
-var ncDPInstance: NCNodeDataProcessor
+var ncDPInstance: ptr NCNodeDataProcessor
 
 method init(self: var NCNodeDataProcessor, data: seq[byte]) {.base.} =
     discard
@@ -38,12 +38,11 @@ method processData(self: var NCNodeDataProcessor, data: seq[byte]): seq[byte] {.
 
 proc sendHeartbeat() {.thread.} =
     ncDebug("NCNode.sendHeartbeat()", 2)
-    {.cast(gcsafe).}:
-        let timeOut = int(ncNodeInstance.heartbeatTimeout * 1000)
-        let serverAddr = ncNodeInstance.serverAddr
-        let serverPort = ncNodeInstance.serverPort
-        let key = ncNodeInstance.key
-        let nodeId = ncNodeInstance.nodeId
+    let timeOut = int(ncNodeInstance.heartbeatTimeout * 1000)
+    let serverAddr = ncNodeInstance.serverAddr
+    let serverPort = ncNodeInstance.serverPort
+    let key = ncNodeInstance.key
+    let nodeId = ncNodeInstance.nodeId
 
     while true:
         sleep(timeOut)
@@ -77,7 +76,7 @@ proc ncRunNode*() =
             let (nodeId, initData) = ncFromBytes(serverResponse.data, (NCNodeID, seq[byte]))
             ncInfo(fmt("NCNode.runNode(), Got new node id: {nodeId}"))
             ncNodeInstance.nodeId = nodeId
-            ncDPInstance.init(initData)
+            ncDPInstance[].init(initData)
         of NCNodeMsgKind.quit:
             ncInfo("NCNode.runNode(), All work is done, will exit now")
             return
@@ -101,7 +100,7 @@ proc ncRunNode*() =
                 break
             of NCNodeMsgKind.newData:
                 ncDebug("NCNode.runNode(), Got new data to process")
-                let processedData = ncDPInstance.processData(serverResponse.data)
+                let processedData = ncDPInstance[].processData(serverResponse.data)
                 ncDebug("NCNode.runNode(), Processing done, send result back to server", 2)
 
                 let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processedData)
@@ -126,11 +125,19 @@ proc ncRunNode*() =
     if not hbThreadId.running():
         joinThread(hbThreadId)
 
+    ncInfo("NCNode.runNode(), free memory")
+
+    reset(ncNodeInstance.serverAddr)
+    reset(ncNodeInstance.key)
+    deallocShared(ncNodeInstance)
+    deallocShared(ncDPInstance)
+
     ncInfo("NCNode.runNode(), Will exit now!")
 
 proc ncInitNode*(dataProcessor: NCNodeDataProcessor, ncConfig: NCConfiguration) =
     ncInfo("ncInitNode(config)")
 
+    ncNodeInstance = createShared(NCNode)
     ncNodeInstance.serverPort = ncConfig.serverPort
     ncNodeInstance.serverAddr = ncConfig.serverAddr
     # Cast key from string to array[32, byte] for chacha20 (32 bytes)
@@ -142,7 +149,8 @@ proc ncInitNode*(dataProcessor: NCNodeDataProcessor, ncConfig: NCConfiguration) 
     ncNodeInstance.key = key[]
     ncNodeInstance.heartbeatTimeout = ncConfig.heartbeatTimeout
 
-    ncDPInstance = dataProcessor
+    ncDPInstance = createShared(NCNodeDataProcessor)
+    moveMem(ncDPInstance, dataProcessor.addr, sizeof(NCNodeDataProcessor))
 
 proc ncInitNode*(dataProcessor: NCNodeDataProcessor, filename: string) =
     ncInfo(fmt("ncInitNode({fileName})"))
