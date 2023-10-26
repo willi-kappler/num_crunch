@@ -37,9 +37,8 @@ method getNewData(self: var MandelServerDP, n: NCNodeID): seq[byte] =
         return ncToBytes(data.get())
 
 method collectData(self: var MandelServerDP, n: NCNodeID, data: seq[byte]) =
-    if data.len() > 0:
-        let processedData = ncFromBytes(data, MandelResult)
-        self.data.collectData(n, processedData.pixelData)
+    let processedData = ncFromBytes(data, MandelResult)
+    self.data.collectData(n, processedData.pixelData)
 
 method maybeDeadNode(self: var MandelServerDP, n: NCNodeID) =
     self.data.maybeDeadNode(n)
