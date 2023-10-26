@@ -224,6 +224,8 @@ proc startHttpServer(port: Port) {.async.} =
 proc ncRunServer*() =
     ncInfo("ncRunServer()")
 
+    let startTime = getTime()
+
     initLock(ncServerLock)
 
     waitFor startHttpServer(ncServerInstance.serverPort)
@@ -238,6 +240,13 @@ proc ncRunServer*() =
     reset(ncServerInstance.nodes)
     deallocShared(ncServerInstance)
     deallocShared(ncDPInstance)
+
+    let endTime = getTime()
+    let jobDurationSec = float64((endTime - startTime).inMilliseconds()) / 1000.0
+    let jobDurationMin = jobDurationSec / 60.0
+    let jobDurationHour = jobDurationMin / 60.0
+
+    ncInfo(fmt("ncRunServer(), time taken: {jobDurationSec} [s], {jobDurationMin} [min], {jobDurationHour} [h]"))
 
     ncInfo("ncRunServer(), will exit now")
 
