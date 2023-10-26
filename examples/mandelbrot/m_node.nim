@@ -23,6 +23,8 @@ method init(self: var MandelNodeDP, data: seq[byte]) =
     self.initData = initData
     self.data.pixelData = newSeq[uint32](initData.tileWidth * initData.tileHeight)
 
+    ncDebug(fmt("MandelNodeDP.init(), initData: {initData}"))
+
 method processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
     let (tx, ty) = ncFromBytes(input, (uint32, uint32))
 
@@ -94,10 +96,7 @@ method processData(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
                 z = (z * z) + c
                 currentIter = currentIter + 1
 
-            if currentIter < maxIter:
-                self.data.pixelData[(y * tw) + x] = currentIter
-            else:
-                self.data.pixelData[(y * tw) + x] = 0
+            self.data.pixelData[(y * tw) + x] = currentIter
 
     let data = ncToBytes(self.data)
     return data
