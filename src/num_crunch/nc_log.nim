@@ -6,24 +6,26 @@ import std/logging
 
 var ncLoggerLock: Lock
 var ncLoggerEnabled: bool = false
-var ncLogger: Logger
+var ncLogger: ptr Logger
 var ncDebugLevel: uint8 = 0
 
 proc ncInitLogger*(newLogger: Logger, debugLevel: uint8 = 0) =
     ncLoggerEnabled = true
     initLock(ncLoggerLock)
-    ncLogger = newLogger
+
+    ncLogger = createShared(Logger)
+    moveMem(ncLogger, newLogger.addr, sizeof(Logger))
     ncDebugLevel = debugLevel
 
 proc ncDeinitLogger*() =
     ncLoggerEnabled = false
     deinitLock(ncLoggerLock)
+    deallocShared(ncLogger)
 
 proc ncLog*(level: Level, message: string) =
     if ncLoggerEnabled:
         withLock ncLoggerLock:
-            {.cast(gcsafe).}:
-                ncLogger.log(level, message)
+            ncLogger[].log(level, message)
 
 proc ncDebug*(message: string, level: uint8 = 0) =
     if ncDebugLevel >= level:
