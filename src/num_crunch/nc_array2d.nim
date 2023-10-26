@@ -31,13 +31,16 @@ type
 
 proc ncNewArray2D*[T](sizeX: uint32, sizeY: uint32, tileX: uint32, tileY: uint32): NCArray2D[T] =
     ncDebug(fmt("ncNewArray2D(), {sizeX}, {sizeY}, {tileX}, {tileY}"))
+    let totalSizeX = sizeX * tileX
+    let totalSizeY = sizeY * tileY
+
     result.tileSizeX = sizeX
     result.tileSizeY = sizeY
     result.numTilesX = tileX
     result.numTilesY = tileY
-    result.data = newSeq[T](sizeX * sizeY * tileX * tileY)
-    result.totalSizeX = sizeX * tileX
-    result.totalSizeY = sizeY * tileY
+    result.totalSizeX = totalSizeX
+    result.totalSizeY = totalSizeY
+    result.data = newSeq[T](totalSizeX * totalSizeY)
     result.tileStatus = newSeq[NCTileStatus](tileX * tileY)
 
 func getTileSize*[T](self: NCArray2D[T]): (uint32, uint32) =
