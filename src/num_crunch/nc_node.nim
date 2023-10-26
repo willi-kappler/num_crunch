@@ -37,7 +37,7 @@ method processData(self: var NCNodeDataProcessor, data: seq[byte]): seq[byte] {.
     quit("You must override this method: processData")
 
 proc sendHeartbeat() {.thread.} =
-    ncDebug("NCNode.sendHeartbeat()", 2)
+    ncDebug("sendHeartbeat()", 2)
     let timeOut = int(ncNodeInstance.heartbeatTimeout * 1000)
     let serverAddr = ncNodeInstance.serverAddr
     let serverPort = ncNodeInstance.serverPort
@@ -48,23 +48,21 @@ proc sendHeartbeat() {.thread.} =
         sleep(timeOut)
 
         # Send heartbeat message to server
-        ncDebug(fmt("NCNode.sendHeartbeat(), Node {nodeId} sends heartbeat message to server"))
+        ncDebug(fmt("sendHeartbeat(), Node {nodeId} sends heartbeat message to server"))
         let serverResponse = ncSendHeartbeatMessage(serverAddr, serverPort, key, nodeId)
 
         case serverResponse.kind:
             of NCNodeMsgKind.quit:
-                ncInfo("NCNode.sendHeartbeat(), All work is done, will exit now")
+                ncInfo("sendHeartbeat(), All work is done, will exit now")
                 break
             of NCNodeMsgKind.ok:
                 # Everything is fine, nothing more to do
                 discard
             else:
-                ncError(fmt("NCNode.sendHeartbeat(), Unknown response: {serverResponse.kind}"))
+                ncError(fmt("sendHeartbeat(), Unknown response: {serverResponse.kind}"))
                 break
 
 proc ncRunNode*() =
-    ncInfo("NCNode.runNode()")
-
     let serverAddr = ncNodeInstance.serverAddr
     let serverPort = ncNodeInstance.serverPort
     let key = ncNodeInstance.key
@@ -74,14 +72,14 @@ proc ncRunNode*() =
     case serverResponse.kind:
         of NCNodeMsgKind.welcome:
             let (nodeId, initData) = ncFromBytes(serverResponse.data, (NCNodeID, seq[byte]))
-            ncInfo(fmt("NCNode.runNode(), Got new node id: {nodeId}"))
+            ncInfo(fmt("ncRunNode(), Got new node id: {nodeId}"))
             ncNodeInstance.nodeId = nodeId
             ncDPInstance[].init(initData)
         of NCNodeMsgKind.quit:
-            ncInfo("NCNode.runNode(), All work is done, will exit now")
+            ncInfo("ncRunNode(), All work is done, will exit now")
             return
         else:
-            ncError(fmt("NCNode.runNode(), Unknown response: {serverResponse.kind}"))
+            ncError(fmt("ncRunNode(), Unknown response: {serverResponse.kind}"))
             return
 
     var hbThreadId: Thread[void]
@@ -90,49 +88,49 @@ proc ncRunNode*() =
     let nodeId = ncNodeInstance.nodeId
 
     while true:
-        # # Do not flood the server with requests
+        # Do not flood the server with requests
         sleep(100)
         let serverResponse = ncNodeNeedsData(serverAddr, serverPort, key, nodeId)
 
         case serverResponse.kind:
             of NCNodeMsgKind.quit:
-                ncInfo("NCNode.runNode(), All work is done, will exit now")
+                ncInfo("ncRunNode(), All work is done, will exit now")
                 break
             of NCNodeMsgKind.newData:
-                ncDebug("NCNode.runNode(), Got new data to process")
+                ncDebug("ncRunNode(), Got new data to process")
                 let processedData = ncDPInstance[].processData(serverResponse.data)
-                ncDebug("NCNode.runNode(), Processing done, send result back to server", 2)
+                ncDebug("ncRunNode(), Processing done, send result back to server", 2)
 
                 let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processedData)
 
                 case serverResponse.kind:
                     of NCNodeMsgKind.quit:
-                        ncInfo("NCNode.runNode(), All work is done, will exit now")
+                        ncInfo("ncRunNode(), All work is done, will exit now")
                         break
                     of NCNodeMsgKind.ok:
                         # Everything is fine, nothing more to do
                         discard
                     else:
-                        ncError(fmt("NCNode.runNode(), Unknown response: {serverResponse.kind}"))
+                        ncError(fmt("ncRunNode(), Unknown response: {serverResponse.kind}"))
                         break
             else:
-                ncError(fmt("NCNode.runNode(), Unknown response: {serverResponse.kind}"))
+                ncError(fmt("ncRunNode(), Unknown response: {serverResponse.kind}"))
                 break
 
-    ncDebug("NCNode.runNode(), Waiting for other thread to finish...")
+    ncDebug("ncRunNode(), Waiting for other thread to finish...")
 
     # Try to join the heartbeat thread
     if not hbThreadId.running():
         joinThread(hbThreadId)
 
-    ncInfo("NCNode.runNode(), free memory")
+    ncInfo("ncRunNode(), free memory")
 
     reset(ncNodeInstance.serverAddr)
     reset(ncNodeInstance.key)
     deallocShared(ncNodeInstance)
     deallocShared(ncDPInstance)
 
-    ncInfo("NCNode.runNode(), Will exit now!")
+    ncInfo("ncRunNode(), Will exit now!")
 
 proc ncInitNode*(dataProcessor: NCNodeDataProcessor, ncConfig: NCConfiguration) =
     ncInfo("ncInitNode(config)")
