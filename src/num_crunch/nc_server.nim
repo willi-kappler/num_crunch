@@ -139,19 +139,6 @@ proc handleClient(req: Request) {.async.} =
                     nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
                 else:
                     ncError(fmt("handleClient(), node id invalid: {message.id}"))
-            of "/check_heartbeat":
-                ncDebug("handleClient(), check heartbeat of all nodes")
-
-                let maxDuration = initDuration(seconds = int64(ncServerInstance.heartbeatTimeout))
-                let currentTime = getTime()
-
-                for (nId, hbTime) in ncServerInstance.nodes:
-                    if maxDuration < (currentTime - hbTime):
-                        ncInfo(fmt("handleClient(), node is not sending heartbeat message: {nId}"))
-                        # Let data processor know that this node seems dead
-                        ncDPInstance[].maybeDeadNode(nId)
-
-                nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
             of "/node_needs_data":
                 ncDebug(fmt("handleClient(), node needs data: {message.id}"))
 
