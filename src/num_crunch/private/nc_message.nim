@@ -1,6 +1,5 @@
 
 # Nim std imports
-import std/base64
 import std/httpclient
 
 from std/random import rand
@@ -39,7 +38,6 @@ proc ncEncodeMessage*(message: string, key: Key): string =
     let message2 = chacha20(message1, key, nonce)
     let message3 = toFlatty((message2, nonce))
 
-    #return encode(message3)
     return message3
 
 proc ncDecodeMessage*(message: string, key: Key): string =
