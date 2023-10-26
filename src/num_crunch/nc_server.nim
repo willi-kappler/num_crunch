@@ -205,7 +205,12 @@ proc startHttpServer(port: Port) {.async.} =
             if hbTimer.finished():
                 ncDebug("startHttpServer(), hbTimer finished", 2)
                 hbTimer = sleepAsync(hbTimeout)
-                if not jobFinished:
+                if jobFinished:
+                    ncDebug(fmt("startHttpServer(), work is done will exit soon... ({quitCounter})"))
+                    dec(quitCounter)
+                    if quitCounter == 0:
+                        break
+                else:
                     await checkNodeHearbeat()
 
             if serverFuture.finished():
@@ -213,12 +218,6 @@ proc startHttpServer(port: Port) {.async.} =
                 serverFuture = server.acceptRequest(handleClient)
         else:
             await sleepAsync(100)
-
-        if jobFinished:
-            ncDebug(fmt("startHttpServer(), work is done will exit soon... ({quitCounter})"))
-            dec(quitCounter)
-            if quitCounter == 0:
-                break
 
     server.close()
 
