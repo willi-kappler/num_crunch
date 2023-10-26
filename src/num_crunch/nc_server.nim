@@ -179,7 +179,7 @@ proc handleClient(req: Request) {.async.} =
 
                     nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
                 of "/node_needs_data":
-                    ncDebug(fmt("handleClient(), node needs data:{message.id}"))
+                    ncDebug(fmt("handleClient(), node needs data: {message.id}"))
 
                     if validNodeId(message.id):
                         let newData = ncDPInstance.getNewData(message.id)
