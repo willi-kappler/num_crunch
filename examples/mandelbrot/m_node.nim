@@ -7,22 +7,23 @@ from std/strformat import fmt
 # Local imports
 #import num_crunch/nc_common
 
+import ../../src/num_crunch/nc_node
 import ../../src/num_crunch/nc_common
 import ../../src/num_crunch/nc_log
 
 import m_common
 
 type
-    MandelNodeDP = object
+    MandelNodeDP = ref object of NCNodeDataProcessor
         initData: MandelInit
         data: MandelResult
 
-proc init*(self: var MandelNodeDP, data: seq[byte]) =
+method init(self: var MandelNodeDP, data: seq[byte]) =
     let initData = ncFromBytes(data, MandelInit)
     self.initData = initData
     self.data.pixelData = newSeq[uint32](initData.tileWidth * initData.tileHeight)
 
-proc processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
+method processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
     let (tx, ty) = ncFromBytes(input, (uint32, uint32))
 
     let tw = self.initData.tileWidth
@@ -65,7 +66,7 @@ proc processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
     let data = ncToBytes(self.data)
     return data
 
-proc processData*(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
+method processData(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
     ncDebug("processData()", 2)
     if inputData.len() == 0:
         ncDebug("No more data to process")

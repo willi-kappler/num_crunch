@@ -9,6 +9,7 @@ import std/options
 #import num_crunch/nc_array2d
 #import num_crunch/nc_common
 
+import ../../src/num_crunch/nc_server
 import ../../src/num_crunch/nc_nodeid
 import ../../src/num_crunch/nc_array2d
 import ../../src/num_crunch/nc_common
@@ -16,34 +17,34 @@ import ../../src/num_crunch/nc_common
 import m_common
 
 type
-    MandelServerDP = object
+    MandelServerDP = ref object of NCServerDataProcessor
         data: NCArray2D[uint32]
         re2: float64
         im2: float64
         initData: MandelInit
 
-proc isFinished*(self: MandelServerDP): bool =
+method isFinished(self: var MandelServerDP): bool =
     self.data.isFinished()
 
-proc getInitData*(self: var MandelServerDP): seq[byte] =
+method getInitData(self: var MandelServerDP): seq[byte] =
     return ncToBytes(self.initData)
 
-proc getNewData*(self: var MandelServerDP, n: NCNodeID): seq[byte] =
+method getNewData(self: var MandelServerDP, n: NCNodeID): seq[byte] =
     let data = self.data.nextUnprocessedTile(n)
     if data.isNone():
         return @[]
     else:
         return ncToBytes(data.get())
 
-proc collectData*(self: var MandelServerDP, n: NCNodeID, data: seq[byte]) =
+method collectData(self: var MandelServerDP, n: NCNodeID, data: seq[byte]) =
     if data.len() > 0:
         let processedData = ncFromBytes(data, MandelResult)
         self.data.collectData(n, processedData.pixelData)
 
-proc maybeDeadNode*(self: var MandelServerDP, n: NCNodeID) =
+method maybeDeadNode(self: var MandelServerDP, n: NCNodeID) =
     self.data.maybeDeadNode(n)
 
-proc saveData*(self: var MandelServerDP) =
+method saveData(self: var MandelServerDP) =
     # TODO: save pixel data to image file
     discard
 

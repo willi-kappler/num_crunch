@@ -50,12 +50,12 @@ when isMainModule:
 
     if runServer:
         let logger = newFileLogger("mandel_server.log", fmtStr=verboseFmtStr)
-        ncInitLogger(logger)
+        ncInitLogger(logger, 2)
 
         ncInfo("Starting server")
         let dataProcessor = initMandelServerDP()
-        var server = ncInitServer(dataProcessor, config)
-        server.runServer()
+        ncInitServer(dataProcessor, config)
+        ncRunServer()
     else:
         var nameCounter = 1
         var logFilename = ""
@@ -67,12 +67,13 @@ when isMainModule:
                 nameCounter += 1
                 continue
             else:
-                let logger = newFileLogger(logFilename, fmtStr=verboseFmtStr)
-                ncInitLogger(logger)
                 break
+
+        let logger = newFileLogger(logFilename, fmtStr=verboseFmtStr)
+        ncInitLogger(logger, 2)
 
         ncInfo("Starting Node")
         let dataProcessor = initMandelNodeDP()
-        var node = ncInitNode(dataProcessor, config)
-        node.runNode()
+        ncInitNode(dataProcessor, config)
+        ncRunNode()
 
