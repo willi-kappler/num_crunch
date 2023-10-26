@@ -3,6 +3,8 @@
 # Nim std imports
 import std/options
 
+from std/strformat import fmt
+
 
 # Local imports
 #import num_crunch/nc_nodeid
@@ -44,8 +46,26 @@ method maybeDeadNode(self: var MandelServerDP, n: NCNodeID) =
     self.data.maybeDeadNode(n)
 
 method saveData(self: var MandelServerDP) =
-    # TODO: save pixel data to image file
-    discard
+    let (imgWidth, imgHeight) = self.data.getTotalSize()
+
+    let imgFile = open("mandel_image.ppm", mode = fmWrite)
+
+    imgFile.write("P3\n")
+    imgFile.write(fmt("{imgWidth} {imgHeight}\n"))
+
+    for x in 0..<imgHeight:
+        for y in 0..<imgWidth:
+            let value = self.data.getXY(x, y)
+
+            if value == 1024:
+                imgFile.write("0 0 0 ")
+            else:
+                let colorValue = (value mod 16) * 16
+                imgFile.write(fmt("200 {colorValue} 0 "))
+
+        imgFile.write("\n")
+
+    imgFile.close()
 
 proc initMandelServerDP*(): MandelServerDP =
     # TODO: read in these values from a configuration file
@@ -56,11 +76,11 @@ proc initMandelServerDP*(): MandelServerDP =
     let data = ncNewArray2D[uint32](tileWidth, tileHeight, numTilesX, numTilesY)
     let imgWidth: uint32 = tileWidth * numTilesX
     let imgHeight: uint32 = tileHeight * numTilesY
-    let re1 = 0.0
-    let re2 = 0.0
+    let re1 = -2.0
+    let re2 = 1.0
     let reStep = (re2 - re1) / float64(imgWidth)
-    let im1 = 0.0
-    let im2 = 0.0
+    let im1 = -1.5
+    let im2 = 1.5
     let imStep = (im2 - im1) / float64(imgHeight)
     let maxIter: uint32 = 1024
 
