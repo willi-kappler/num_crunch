@@ -88,8 +88,6 @@ proc ncRunNode*() =
     let nodeId = ncNodeInstance.nodeId
 
     while true:
-        # Do not flood the server with requests
-        sleep(100)
         let serverResponse = ncNodeNeedsData(serverAddr, serverPort, key, nodeId)
 
         case serverResponse.kind:
@@ -98,21 +96,25 @@ proc ncRunNode*() =
                 break
             of NCNodeMsgKind.newData:
                 ncDebug("ncRunNode(), Got new data to process")
-                let processedData = ncDPInstance[].processData(serverResponse.data)
-                ncDebug("ncRunNode(), Processing done, send result back to server", 2)
 
-                let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processedData)
+                if serverResponse.data.len() == 0:
+                    ncDebug("ncRunNode(), no more data to process, waiting for quit message")
+                    sleep(60 * 1000)
+                else:
+                    let processedData = ncDPInstance[].processData(serverResponse.data)
+                    ncDebug("ncRunNode(), Processing done, send result back to server", 2)
+                    let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processedData)
 
-                case serverResponse.kind:
-                    of NCNodeMsgKind.quit:
-                        ncInfo("ncRunNode(), All work is done, will exit now")
-                        break
-                    of NCNodeMsgKind.ok:
-                        # Everything is fine, nothing more to do
-                        discard
-                    else:
-                        ncError(fmt("ncRunNode(), Unknown response: {serverResponse.kind}"))
-                        break
+                    case serverResponse.kind:
+                        of NCNodeMsgKind.quit:
+                            ncInfo("ncRunNode(), All work is done, will exit now")
+                            break
+                        of NCNodeMsgKind.ok:
+                            # Everything is fine, nothing more to do
+                            discard
+                        else:
+                            ncError(fmt("ncRunNode(), Unknown response: {serverResponse.kind}"))
+                            break
             else:
                 ncError(fmt("ncRunNode(), Unknown response: {serverResponse.kind}"))
                 break
