@@ -19,12 +19,15 @@ task checkAll, "run 'nim check' on all source files":
     exec "nim check mandel.nim"
 
 task runMandelbrot, "Runs the mandelbrot example":
-    exec "nim c mandel.nim"
+    exec "nim c -d:release mandel.nim"
     exec "./mandel --server &"
+    exec "sleep 5"
     # Start four nodes
     exec "./mandel &"
     exec "./mandel &"
     exec "./mandel &"
     exec "./mandel &"
 
+task clean, "Clean up after calculation":
+    exec "rm mandel *.log *.ppm"
 
