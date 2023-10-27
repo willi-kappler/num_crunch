@@ -37,7 +37,7 @@ task checkAll, "run 'nim check' on all source files":
 task cleanTests, "Clean log files in binaries in tests folder":
     cd "tests/"
     # Delete all log files
-    exec "rm *.log"
+    exec "rm -f *.log"
     # Delete all executable files
     exec "find . -type f -perm /u=x -delete"
 
