@@ -14,7 +14,6 @@ from flatty import fromFlatty, toFlatty
 
 # Internal imports
 import ../nc_nodeid
-import ../nc_log
 
 type
     NCNodeMsgKind* = enum
