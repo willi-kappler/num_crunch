@@ -2,7 +2,9 @@
 
 # Nim std imports
 import std/complex
+
 from std/strformat import fmt
+from os import sleep
 
 # Local imports
 #import num_crunch/nc_common
@@ -24,49 +26,6 @@ method init(self: var MandelNodeDP, data: seq[byte]) =
     self.data.pixelData = newSeq[uint32](initData.tileWidth * initData.tileHeight)
 
     ncDebug(fmt("MandelNodeDP.init(), initData: {initData}"))
-
-method processDataOld*(self: var MandelNodeDP, input: seq[byte]): seq[byte] =
-    let (tx, ty) = ncFromBytes(input, (uint32, uint32))
-
-    let tw = self.initData.tileWidth
-    let th = self.initData.tileHeight
-    let factorX = float64(tw * tx)
-    let factorY = float64(th * ty)
-    let reStep = self.initData.reStep
-    let imStep = self.initData.imStep
-    let maxIter = self.initData.maxIter
-
-    var currentIter: uint32 = 0
-    var re: float64 = 0.0
-    var im: float64 = self.initData.im1 + (self.initData.imStep * factorY)
-    var zre: float64 = 0.0
-    var zim: float64 = 0.0
-    var tmp: float64 = 0.0
-    var a: float64 = 0.0
-    var b: float64 = 0.0
-
-    for y in 0..<th:
-        re = self.initData.re1 + (reStep * factorX)
-        for x in 0..<tw:
-            currentIter = 0
-            zre = 0.0
-            zim = 0.0
-            a = 0.0
-            b = 0.0
-            while (a + b <= 4.0) and (currentIter < maxIter):
-                a = zre * zre
-                b = zim * zim
-                tmp = a - b + re
-                zim = (2.0 * b) + im
-                zre = tmp
-                currentIter = currentIter + 1
-
-            self.data.pixelData[(y * tw) + x] = currentIter
-            re = re + reStep
-        im = im + imStep
-
-    let data = ncToBytes(self.data)
-    return data
 
 method processData(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
     ncDebug("processData()", 2)
@@ -91,12 +50,33 @@ method processData(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
         for x in 0..<tw:
             currentIter = 0
             let c = complex64(re + (float64(x) * reStep), im + (float64(y) * imStep))
+            z = c
 
             while (z.abs2() <= 4.0) and (currentIter < maxIter):
-                z = (z * z) + c
-                currentIter = currentIter + 1
+                z = c + (z * z)
+                inc(currentIter)
 
             self.data.pixelData[(y * tw) + x] = currentIter
+
+    let data = ncToBytes(self.data)
+    return data
+
+proc processData2(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
+    ncDebug("processData()", 2)
+
+    let (tx, ty) = ncFromBytes(inputData, (uint32, uint32))
+    ncDebug(fmt("processData(), tx: {tx}, ty: {ty}"))
+
+    let value = (ty * 256) + (tx * 64)
+
+    let tw = self.initData.tileWidth
+    let th = self.initData.tileHeight
+
+    for y in 0..<th:
+        for x in 0..<tw:
+            self.data.pixelData[(y * tw) + x] = value
+
+    sleep(1000 * 10)
 
     let data = ncToBytes(self.data)
     return data
