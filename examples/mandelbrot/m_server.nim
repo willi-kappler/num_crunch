@@ -47,21 +47,24 @@ method maybeDeadNode(self: var MandelServerDP, n: NCNodeID) =
 
 method saveData(self: var MandelServerDP) =
     let (imgWidth, imgHeight) = self.data.getTotalSize()
+    let maxIter = self.initData.maxIter
 
     let imgFile = open("mandel_image.ppm", mode = fmWrite)
 
     imgFile.write("P3\n")
     imgFile.write(fmt("{imgWidth} {imgHeight}\n"))
+    imgFile.write("255\n")
 
-    for x in 0..<imgHeight:
-        for y in 0..<imgWidth:
+    for y in 0..<imgHeight:
+        for x in 0..<imgWidth:
             let value = self.data.getXY(x, y)
 
-            if value == 1024:
+            if value == maxIter:
                 imgFile.write("0 0 0 ")
             else:
                 let colorValue = (value mod 16) * 16
-                imgFile.write(fmt("200 {colorValue} 0 "))
+                # let colorValue = (value * 255) div 1024
+                imgFile.write(fmt("255 {colorValue} 0 "))
 
         imgFile.write("\n")
 
@@ -82,7 +85,7 @@ proc initMandelServerDP*(): MandelServerDP =
     let im1 = -1.5
     let im2 = 1.5
     let imStep = (im2 - im1) / float64(imgHeight)
-    let maxIter: uint32 = 1024
+    let maxIter: uint32 = 2048
 
     let initData = MandelInit(
         tileWidth: tileWidth,
