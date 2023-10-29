@@ -41,7 +41,10 @@ task cleanTests, "Clean log files in binaries in tests folder":
     # Delete all executable files
     exec "find . -type f -perm /u=x -delete"
 
-task runMandelbrot, "Runs the mandelbrot example":
+task runMandel, "Runs the mandelbrot example":
     cd "examples/mandelbrot/"
-    exec "nimble runMandelbrot"
+    exec "nimble runMandel"
+
+task genDoc, "Generate documentation":
+    exec "nim doc --project src/num_crunch.nim"
 
