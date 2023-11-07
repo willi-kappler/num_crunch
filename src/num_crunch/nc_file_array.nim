@@ -20,29 +20,44 @@ proc ncNewFileArray*[T](): NCFileArray[T] =
     NCFileArray(files: @[])
 
 proc ncAddFile*(self: var NCFileArray, path: string) =
+    ncDebug(fmt("NCFileArray, ncAddFile(), path: {path}"))
     let info = NCFileInfo(path: path, nodeId: none, data: none)
     self.files.add(info)
 
+proc ncAddFolder*(self: var NCFileArray, path: string) =
+    ncDebug(fmt("NCFileArray, ncAddFolder(), path: {path}"))
+    discard
+
 proc ncSetData*[T](self: var NCFileArray, nodeId: NCNodeId, data: T) =
-    discard
+    for item in self.files.mitems():
+        if item.nodeId.isSome and item.nodeId.get() == nodeId:
+            item.data = data
 
-proc ncGetData*[T](self: NCFileArray): T =
-    discard
+proc ncGetData*[T](self: NCFileArray, nodeId: NCNodeId): Option[T] =
+    for item in self.files.mitems():
+        if item.nodeId.isSome and item.nodeId.get() == nodeId:
+            return item.data
 
-proc isFinished*(self: NCFileArray): bool =
-    result = true
+    return none
 
-    for info in self.files:
-        if info.nodeID.isNone or info.data.isNone:
-            result = false
+func ncIsFinished*(self: NCFileArray): bool =
+    for item in self.files:
+        if item.nodeID.isNone or item.data.isNone:
+            return false
 
-proc nextUnprocessedFile*(self: var NCFileArray): Option[string] =
-    discard
+    return true
 
-proc maybeDeadNode*(self: var NCFileArray) =
-    discard
+proc ncNextUnprocessedFile*(self: var NCFileArray, nodeId: NCNodeId): Option[string] =
+    for item in self.files.mitems():
+        if item.nodeId.isNone:
+            item.nodeId = some(nodeId)
+            return some(item.path)
 
-proc collectData*[T](self: var NCArray2D[T], nodeId: NCNodeId, data: seq[T]) =
-    discard
+    return none
 
+proc ncMaybeDeadNode*(self: var NCFileArray, nodeId: NCNodeId) =
+    for item in self.files.mitems():
+        if item.nodeId.isSome and item.nodeId.get() == nodeId:
+            item.nodeId = none
+            return
 
