@@ -1,6 +1,9 @@
 # Nim std imports
 from std/strformat import fmt
+from std/dirs import walkDir, PathComponent
+
 import std/options
+
 
 # Local imports
 import nc_nodeid
@@ -26,7 +29,13 @@ proc ncAddFile*(self: var NCFileArray, path: string) =
 
 proc ncAddFolder*(self: var NCFileArray, path: string) =
     ncDebug(fmt("NCFileArray, ncAddFolder(), path: {path}"))
-    discard
+
+    for (pc, p) in walkDir(path):
+        case pc:
+            of PathComponent.pcFile:
+                self.ncAddFile(p)
+            else:
+                discard
 
 proc ncSetData*[T](self: var NCFileArray, nodeId: NCNodeId, data: T) =
     for item in self.files.mitems():
