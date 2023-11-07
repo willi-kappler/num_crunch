@@ -16,25 +16,25 @@ type
     MyDP = ref object of NCServerDataProcessor
         testCounter: uint8
 
-method isFinished(self: var MyDP): bool =
+method ncIsFinished(self: var MyDP): bool =
     ncDebug(fmt("isFinished(), testcounter: {self.testCounter}"))
     if self.testcounter > 0:
         self.testCounter = self.testCounter - 1
     result = (self.testCounter == 0)
 
-method getInitData(self: var MyDP): seq[byte] =
+method ncGetInitData(self: var MyDP): seq[byte] =
     @[]
 
-method getNewData(self: var MyDP, n: NCNodeID): seq[byte] =
+method ncGetNewData(self: var MyDP, n: NCNodeID): seq[byte] =
     @[]
 
-method collectData(self: var MyDP, n: NCNodeID, data: seq[byte]) =
+method ncCollectData(self: var MyDP, n: NCNodeID, data: seq[byte]) =
     discard
 
-method maybeDeadNode(self: var MyDP, n: NCNodeID) =
+method ncMaybeDeadNode(self: var MyDP, n: NCNodeID) =
     discard
 
-method saveData(self: var MyDP) =
+method ncSaveData(self: var MyDP) =
     discard
 
 proc test1() =

@@ -25,28 +25,28 @@ type
         im2: float64
         initData: MandelInit
 
-method isFinished(self: var MandelServerDP): bool =
-    self.data.isFinished()
+method ncIsFinished(self: var MandelServerDP): bool =
+    self.data.ncIsFinished()
 
-method getInitData(self: var MandelServerDP): seq[byte] =
+method ncGetInitData(self: var MandelServerDP): seq[byte] =
     return ncToBytes(self.initData)
 
-method getNewData(self: var MandelServerDP, n: NCNodeID): seq[byte] =
-    let data = self.data.nextUnprocessedTile(n)
+method ncGetNewData(self: var MandelServerDP, n: NCNodeID): seq[byte] =
+    let data = self.data.ncNextUnprocessedTile(n)
     if data.isNone():
         return @[]
     else:
         return ncToBytes(data.get())
 
-method collectData(self: var MandelServerDP, n: NCNodeID, data: seq[byte]) =
+method ncCollectData(self: var MandelServerDP, n: NCNodeID, data: seq[byte]) =
     let processedData = ncFromBytes(data, MandelResult)
-    self.data.collectData(n, processedData.pixelData)
+    self.data.ncCollectData(n, processedData.pixelData)
 
-method maybeDeadNode(self: var MandelServerDP, n: NCNodeID) =
-    self.data.maybeDeadNode(n)
+method ncMaybeDeadNode(self: var MandelServerDP, n: NCNodeID) =
+    self.data.ncMaybeDeadNode(n)
 
-method saveData(self: var MandelServerDP) =
-    let (imgWidth, imgHeight) = self.data.getTotalSize()
+method ncSaveData(self: var MandelServerDP) =
+    let (imgWidth, imgHeight) = self.data.ncGetTotalSize()
     let maxIter = self.initData.maxIter
 
     let imgFile = open("mandel_image.ppm", mode = fmWrite)
@@ -57,7 +57,7 @@ method saveData(self: var MandelServerDP) =
 
     for y in 0..<imgHeight:
         for x in 0..<imgWidth:
-            let value = self.data.getXY(x, y)
+            let value = self.data.ncGetXY(x, y)
 
             if value == maxIter:
                 imgFile.write("0 0 0 ")

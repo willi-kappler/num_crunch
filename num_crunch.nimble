@@ -25,6 +25,7 @@ task checkAll, "run 'nim check' on all source files":
     exec "nim check nc_array3d.nim"
     exec "nim check nc_common.nim"
     exec "nim check nc_config.nim"
+    exec "nim check nc_file_array.nim"
     exec "nim check nc_node.nim"
     exec "nim check nc_nodeid.nim"
     exec "nim check nc_server.nim"

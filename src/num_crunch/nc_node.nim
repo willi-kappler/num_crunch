@@ -30,13 +30,13 @@ var ncNodeInstance: ptr NCNode
 
 var ncDPInstance: ptr NCNodeDataProcessor
 
-method init(self: var NCNodeDataProcessor, data: seq[byte]) {.base.} =
+method ncInit(self: var NCNodeDataProcessor, data: seq[byte]) {.base.} =
     discard
 
-method processData(self: var NCNodeDataProcessor, data: seq[byte]): seq[byte] {.base.} =
+method ncProcessData(self: var NCNodeDataProcessor, data: seq[byte]): seq[byte] {.base.} =
     quit("You must override this method: processData")
 
-proc sendHeartbeat() {.thread.} =
+proc ncSendHeartbeat() {.thread.} =
     ncDebug("sendHeartbeat()", 2)
     let timeOut = int(ncNodeInstance.heartbeatTimeout * 1000)
     let serverAddr = ncNodeInstance.serverAddr
@@ -74,7 +74,7 @@ proc ncRunNode*() =
             let (nodeId, initData) = ncFromBytes(serverResponse.data, (NCNodeID, seq[byte]))
             ncInfo(fmt("ncRunNode(), Got new node id: {nodeId}"))
             ncNodeInstance.nodeId = nodeId
-            ncDPInstance[].init(initData)
+            ncDPInstance[].ncInit(initData)
         of NCNodeMsgKind.quit:
             ncInfo("ncRunNode(), All work is done, will exit now")
             return
@@ -83,7 +83,7 @@ proc ncRunNode*() =
             return
 
     var hbThreadId: Thread[void]
-    createThread(hbThreadId, sendHeartbeat)
+    createThread(hbThreadId, ncSendHeartbeat)
 
     let nodeId = ncNodeInstance.nodeId
 
@@ -101,7 +101,7 @@ proc ncRunNode*() =
                     ncDebug("ncRunNode(), no more data to process, waiting for quit message")
                     sleep(60 * 1000)
                 else:
-                    let processedData = ncDPInstance[].processData(serverResponse.data)
+                    let processedData = ncDPInstance[].ncProcessData(serverResponse.data)
                     ncDebug("ncRunNode(), Processing done, send result back to server", 2)
                     let serverResponse = ncSendProcessedData(serverAddr, serverPort, key, nodeId, processedData)
 

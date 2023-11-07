@@ -4,7 +4,6 @@
 import std/complex
 
 from std/strformat import fmt
-from os import sleep
 
 # Local imports
 #import num_crunch/nc_common
@@ -20,18 +19,18 @@ type
         initData: MandelInit
         data: MandelResult
 
-method init(self: var MandelNodeDP, data: seq[byte]) =
+method ncInit(self: var MandelNodeDP, data: seq[byte]) =
     let initData = ncFromBytes(data, MandelInit)
     self.initData = initData
     self.data.pixelData = newSeq[uint32](initData.tileWidth * initData.tileHeight)
 
     ncDebug(fmt("MandelNodeDP.init(), initData: {initData}"))
 
-method processData(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
-    ncDebug("processData()", 2)
+method ncProcessData(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
+    ncDebug("ncProcessData()", 2)
 
     let (tx, ty) = ncFromBytes(inputData, (uint32, uint32))
-    ncDebug(fmt("processData(), tx: {tx}, ty: {ty}"))
+    ncDebug(fmt("ncProcessData(), tx: {tx}, ty: {ty}"))
 
     let tw = self.initData.tileWidth
     let th = self.initData.tileHeight
@@ -57,26 +56,6 @@ method processData(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
                 inc(currentIter)
 
             self.data.pixelData[(y * tw) + x] = currentIter
-
-    let data = ncToBytes(self.data)
-    return data
-
-proc processData2(self: var MandelNodeDP, inputData: seq[byte]): seq[byte] =
-    ncDebug("processData()", 2)
-
-    let (tx, ty) = ncFromBytes(inputData, (uint32, uint32))
-    ncDebug(fmt("processData(), tx: {tx}, ty: {ty}"))
-
-    let value = (ty * 256) + (tx * 64)
-
-    let tw = self.initData.tileWidth
-    let th = self.initData.tileHeight
-
-    for y in 0..<th:
-        for x in 0..<tw:
-            self.data.pixelData[(y * tw) + x] = value
-
-    sleep(1000 * 10)
 
     let data = ncToBytes(self.data)
     return data

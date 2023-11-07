@@ -1,5 +1,7 @@
 
 
+# TODO: Implement Array 3D
+
 type
     NCArray3D[T] = object
         data: seq[T]
@@ -19,11 +21,11 @@ proc ncNewArray*[T](w: uint32, h: uint32, nx: uint32, ny: uint32): NCArray3D[T] 
     result.data = newSeq[T](w*h*nx*ny)
     result.lineWidth = w*nx
 
-proc getXY*[T](a: NCArray3D[T], x: uint32, y: uint32): T =
+proc ncGetXY*[T](a: NCArray3D[T], x: uint32, y: uint32): T =
     let offset = (y * a.lineWidth) + x
     a.data[offset]
 
-proc setXY*[T](a: NCArray3D[T], x: uint32, y: uint32, v: T) =
+proc ncSetXY*[T](a: NCArray3D[T], x: uint32, y: uint32, v: T) =
     let offset = (y * a.lineWidth) + x
     a.data[offset] = v
 

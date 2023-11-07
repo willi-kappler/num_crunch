@@ -36,36 +36,36 @@ var ncDPInstance: ptr NCServerDataProcessor
 
 var ncServerLock: Lock
 
-method isFinished*(self: var NCServerDataProcessor): bool {.base, gcsafe.} =
+method ncIsFinished*(self: var NCServerDataProcessor): bool {.base, gcsafe.} =
     quit("You must override this method: isFinished")
 
-method getInitData*(self: var NCServerDataProcessor): seq[byte] {.base, gcsafe.} =
+method ncGetInitData*(self: var NCServerDataProcessor): seq[byte] {.base, gcsafe.} =
     quit("You must override this method: getInitData")
 
-method getNewData*(self: var NCServerDataProcessor, id: NCNodeID): seq[byte] {.base, gcsafe.} =
+method ncGetNewData*(self: var NCServerDataProcessor, id: NCNodeID): seq[byte] {.base, gcsafe.} =
     quit("You must override this method: getNewData")
 
-method collectData*(self: var NCServerDataProcessor, id: NCNodeID, data: seq[byte]) {.base, gcsafe.} =
+method ncCollectData*(self: var NCServerDataProcessor, id: NCNodeID, data: seq[byte]) {.base, gcsafe.} =
     quit("You must override this method: collectData")
 
-method maybeDeadNode*(self: var NCServerDataProcessor, id: NCNodeID) {.base, gcsafe.} =
+method ncMaybeDeadNode*(self: var NCServerDataProcessor, id: NCNodeID) {.base, gcsafe.} =
     quit("You must override this method: maybeDeadNode")
 
-method saveData*(self: var NCServerDataProcessor) {.base, gcsafe.} =
+method ncSaveData*(self: var NCServerDataProcessor) {.base, gcsafe.} =
     quit("You must override this method: saveData")
 
-proc awaitLock() {.async.} =
-    ncDebug("awaitLock()", 2)
+proc ncAwaitLock() {.async.} =
+    ncDebug("ncAwaitLock()", 2)
 
     while true:
         if tryAcquire(ncServerLock):
-            ncDebug("awaitLock(), success", 2)
+            ncDebug("ncAwaitLock(), success", 2)
             break
         else:
             await sleepAsync(100)
 
-proc createNewNodeId(): NCNodeID =
-    ncDebug("createNewNodeId()", 2)
+proc ncCreateNewNodeId(): NCNodeID =
+    ncDebug("ncCreateNewNodeId()", 2)
 
     result = ncNewNodeId()
     var quit = false
@@ -78,10 +78,10 @@ proc createNewNodeId(): NCNodeID =
                 result = ncNewNodeId()
                 quit = false
 
-    ncDebug(fmt("createNewNodeId(), id: {result}"))
+    ncDebug(fmt("ncCreateNewNodeId(), id: {result}"))
 
-proc validNodeId(id: NCNodeID): bool =
-    ncDebug(fmt("validNodeId(), id: {id}"), 2)
+proc ncValidNodeId(id: NCNodeID): bool =
+    ncDebug(fmt("ncValidNodeId(), id: {id}"), 2)
 
     result = false
 
@@ -90,45 +90,45 @@ proc validNodeId(id: NCNodeID): bool =
             result = true
             break
 
-proc checkNodeHearbeat() {.async.} =
-    ncDebug("checkNodeHearbeat()")
+proc ncCheckNodeHeartbeat() {.async.} =
+    ncDebug("ncCheckNodeHeartbeat()")
 
-    await awaitLock()
+    await ncAwaitLock()
 
     let maxDuration = initDuration(seconds = int64(ncServerInstance.heartbeatTimeout))
     let currentTime = getTime()
 
     for n in ncServerInstance.nodes:
         if maxDuration < (currentTime - n[1]):
-            ncInfo(fmt("checkNodeHearbeat(), node is not sending heartbeat message: {n[0]}"))
+            ncInfo(fmt("ncCheckNodeHeartbeat(), node is not sending heartbeat message: {n[0]}"))
             # Let data processor know that this node seems dead
-            ncDPInstance[].maybeDeadNode(n[0])
+            ncDPInstance[].ncMaybeDeadNode(n[0])
 
     release(ncServerLock)
-    ncDebug("checkNodeHearbeat(), done", 2)
+    ncDebug("ncCheckNodeHeartbeat(), done", 2)
 
-proc handleClient(req: Request) {.async.} =
-    ncDebug("handleClient()", 2)
+proc ncHandleClient(req: Request) {.async.} =
+    ncDebug("ncHandleClient()", 2)
 
     let path = req.url.path
     let body = req.body
     let hostname = req.hostname
 
-    ncDebug(fmt("handleClient(), connection from: {hostname}, path: {path}"))
+    ncDebug(fmt("ncHandleClient(), connection from: {hostname}, path: {path}"))
 
-    await awaitLock()
+    await ncAwaitLock()
 
     let key = ncServerInstance.key
     let message = ncDecodeServerMessage(body, key)
 
     var nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.unknown)
 
-    if ncDPInstance[].isFinished():
+    if ncDPInstance[].ncIsFinished():
         nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.quit)
     else:
         case path:
             of "/heartbeat":
-                ncDebug(fmt("handleClient(), node sends heartbeat: {message.id}"))
+                ncDebug(fmt("ncHandleClient(), node sends heartbeat: {message.id}"))
 
                 var valid = false
 
@@ -141,35 +141,35 @@ proc handleClient(req: Request) {.async.} =
                 if valid:
                     nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
                 else:
-                    ncError(fmt("handleClient(), node id invalid: {message.id}"))
+                    ncError(fmt("ncHandleClient(), node id invalid: {message.id}"))
             of "/node_needs_data":
-                ncDebug(fmt("handleClient(), node needs data: {message.id}"))
+                ncDebug(fmt("ncHandleClient(), node needs data: {message.id}"))
 
-                if validNodeId(message.id):
-                    let newData = ncDPInstance[].getNewData(message.id)
+                if ncValidNodeId(message.id):
+                    let newData = ncDPInstance[].ncGetNewData(message.id)
                     nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.newData, data: newData)
                 else:
-                    ncError(fmt("handleClient(), node id invalid: {message.id}"))
+                    ncError(fmt("ncHandleClient(), node id invalid: {message.id}"))
             of "/processed_data":
-                ncDebug(fmt("handleClient(), node has processed data: {message.id}"))
+                ncDebug(fmt("ncHandleClient(), node has processed data: {message.id}"))
 
-                if validNodeId(message.id):
-                    ncDPInstance[].collectData(message.id, message.data)
+                if ncValidNodeId(message.id):
+                    ncDPInstance[].ncCollectData(message.id, message.data)
                     nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.ok)
                 else:
-                    ncError(fmt("handleClient(), node id invalid: {message.id}"))
+                    ncError(fmt("ncHandleClient(), node id invalid: {message.id}"))
             of "/register_new_node":
-                let newId = createNewNodeId()
+                let newId = ncCreateNewNodeId()
                 ncServerInstance.nodes.add((newId, getTime()))
 
-                ncInfo(fmt("handleClient(), register new node: {newId}"))
+                ncInfo(fmt("ncHandleClient(), register new node: {newId}"))
 
-                let initData = ncDPInstance[].getInitData()
+                let initData = ncDPInstance[].ncGetInitData()
                 let data = ncToBytes((newId, initData))
 
                 nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.welcome, data: data)
             else:
-                ncError(fmt("handleClient(), unknown path: {path}"))
+                ncError(fmt("ncHandleClient(), unknown path: {path}"))
 
     release(ncServerLock)
 
@@ -177,10 +177,10 @@ proc handleClient(req: Request) {.async.} =
     let headers = {"Content-type": "application/data"}
     await req.respond(Http200, encodedMessage, headers.newHttpHeaders())
 
-    ncDebug("handleClient(), done", 2)
+    ncDebug("ncHandleClient(), done", 2)
 
-proc startHttpServer(port: Port) {.async.} =
-    ncInfo("startHttpServer()")
+proc ncStartHttpServer(port: Port) {.async.} =
+    ncInfo("ncStartHttpServer()")
     var server = newAsyncHttpServer()
     server.listen(port)
 
@@ -189,33 +189,33 @@ proc startHttpServer(port: Port) {.async.} =
     # Add a small tolerance to the timeout value
     let hbTimeout: int = (int(ncServerInstance.heartbeatTimeout) * 1000) + 500
     var hbTimer = sleepAsync(hbTimeout)
-    var serverFuture = server.acceptRequest(handleClient)
+    var serverFuture = server.acceptRequest(ncHandleClient)
     var jobFinished = false
 
     while true:
-        ncDebug("startHttpServer(), enter loop", 2)
-        jobFinished = ncDPInstance[].isFinished()
-        ncDebug(fmt("startHttpServer(), jobFinished: {jobFinished}"), 2)
+        ncDebug("ncStartHttpServer(), enter loop", 2)
+        jobFinished = ncDPInstance[].ncIsFinished()
+        ncDebug(fmt("ncStartHttpServer(), jobFinished: {jobFinished}"), 2)
 
         if server.shouldAcceptRequest():
-            ncDebug("startHttpServer(), server accept request", 2)
+            ncDebug("ncStartHttpServer(), server accept request", 2)
             await (serverFuture or hbTimer)
-            ncDebug("startHttpServer(), await done, check hbTimer", 2)
+            ncDebug("ncStartHttpServer(), await done, check hbTimer", 2)
 
             if hbTimer.finished():
-                ncDebug("startHttpServer(), hbTimer finished", 2)
+                ncDebug("ncStartHttpServer(), hbTimer finished", 2)
                 hbTimer = sleepAsync(hbTimeout)
                 if jobFinished:
-                    ncDebug(fmt("startHttpServer(), work is done will exit soon... ({quitCounter})"))
+                    ncDebug(fmt("ncStartHttpServer(), work is done will exit soon... ({quitCounter})"))
                     dec(quitCounter)
                     if quitCounter == 0:
                         break
                 else:
-                    await checkNodeHearbeat()
+                    await ncCheckNodeHeartbeat()
 
             if serverFuture.finished():
                 # Only when the current future is done a new one can be created
-                serverFuture = server.acceptRequest(handleClient)
+                serverFuture = server.acceptRequest(ncHandleClient)
         else:
             await sleepAsync(100)
 
@@ -228,10 +228,10 @@ proc ncRunServer*() =
 
     initLock(ncServerLock)
 
-    waitFor startHttpServer(ncServerInstance.serverPort)
+    waitFor ncStartHttpServer(ncServerInstance.serverPort)
 
     ncInfo("ncRunServer(), save all user data!")
-    ncDPInstance[].saveData()
+    ncDPInstance[].ncSaveData()
 
     deinitLock(ncServerLock)
 
