@@ -132,9 +132,9 @@ proc ncHandleClient(req: Request) {.async.} =
 
                 var valid = false
 
-                for i in 0..<ncServerInstance.nodes.len():
-                    if ncServerInstance.nodes[i][0] == message.id:
-                        ncServerInstance.nodes[i][1] = getTime()
+                for node in ncServerInstance.nodes.mitems():
+                    if node[0] == message.id:
+                        node[1] = getTime()
                         valid = true
                         break
 

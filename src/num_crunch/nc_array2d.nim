@@ -140,38 +140,37 @@ proc ncNextUnprocessedTile*[T](self: var NCArray2D[T], nodeId: NCNodeId): Option
 
     result = none((uint32, uint32))
 
-    for i in 0..<self.tileStatus.len():
-        if self.tileStatus[i].status == NCTileStatusKind.unprocessed:
-            self.tileStatus[i].status = NCTileStatusKind.inProgress
-            self.tileStatus[i].nodeId = nodeId
-            self.tileStatus[i].tileX = x
-            self.tileStatus[i].tileY = y
+    for tile in self.tileStatus.mitems():
+        if tile.status == NCTileStatusKind.unprocessed:
+            tile.status = NCTileStatusKind.inProgress
+            tile.nodeId = nodeId
+            tile.tileX = x
+            tile.tileY = y
             result = some((x, y))
             break
 
-        x = x + 1
+        inc(x)
         if x == self.numTilesX:
             x = 0
-            y = y + 1
+            inc(y)
 
 proc ncMaybeDeadNode*[T](self: var NCArray2D[T], nodeId: NCNodeId) =
     ncDebug(fmt("NCArray2D.maybeDeadNode(), {nodeId}"))
-    for i in 0..<self.tileStatus.len():
-        if self.tileStatus[i].nodeId == nodeId:
-            if self.tileStatus[i].status == NCTileStatusKind.inProgress:
+    for tile in self.tileStatus.mitems():
+        if tile.nodeId == nodeId:
+            if tile.status == NCTileStatusKind.inProgress:
                 # This tile needs to be processed by another node
-                self.tileStatus[i].status = NCTileStatusKind.unprocessed
+                tile.status = NCTileStatusKind.unprocessed
                 # Done, since a node can only process one tile at a time
                 break
 
 proc ncCollectData*[T](self: var NCArray2D[T], nodeId: NCNodeId, data: seq[T]) =
     ncDebug(fmt("NCArray2D.collectData(), {nodeId}"))
-    for i in 0..<self.tileStatus.len():
-        if self.tileStatus[i].nodeId == nodeId:
-            if self.tileStatus[i].status == NCTileStatusKind.inProgress:
-                self.tileStatus[i].status = NCTileStatusKind.done
-                self.ncSetTileXY(self.tileStatus[i].tileX, self.tileStatus[i].tileY, data)
+    for tile in self.tileStatus.mitems():
+        if tile.nodeId == nodeId:
+            if tile.status == NCTileStatusKind.inProgress:
+                tile.status = NCTileStatusKind.done
+                self.ncSetTileXY(tile.tileX, tile.tileY, data)
                 break
-
 
 
