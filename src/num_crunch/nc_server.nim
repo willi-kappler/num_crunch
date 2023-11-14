@@ -1,3 +1,6 @@
+## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
+## Written by Willi Kappler, License: MIT
+##
 
 # Nim std imports
 import std/net
