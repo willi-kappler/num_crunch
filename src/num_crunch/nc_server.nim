@@ -1,6 +1,27 @@
 ## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
 ## Written by Willi Kappler, License: MIT
 ##
+## The main server data structure NCServer is defined here, togehter with the
+## user defined methods:
+##
+## "ncIsFinished()": Determines if the job is done. Will be called every time a node
+##   sends a message to the server. Has to be implemented.
+## "ncGetInitData()": Returns the initial data for the node when it contacts the server
+##   for the first time. May be implemented if needed.
+## "ncGetNewData()": Returns new data for the node (given by the node id) to process.
+##   Has to be implemented.
+## "ncCollectData()": Receives data from the node that has to be collected / merged.
+##    Has to be implemented.
+## "ncMaybeDeadNode()": If a node doesn't send any heartbeat messages anymore then
+##   this method is called so that the server knows that the data may be lost
+##   and can be given to another node to process. Has to be implemented.
+## "ncSaveData()": If the jov is done the server saves the data to disk.
+##   Has to be implemented.
+##
+## These methods are defined for the NCServerDataProcessor data structure that
+## the user has to inherit from / implement.
+##
+
 
 # Nim std imports
 import std/net
@@ -24,11 +45,12 @@ import nc_common
 
 type
     NCServer* = object
+        ## Configuration items for the server.
         serverPort: Port
         key: Key
         heartbeatTimeout: uint16 # In seconds
         serverLock: Lock
-        # Use a HashMap in the future
+        # Use a HashMap in the future... ?
         nodes: seq[(NCNodeID, Time)]
 
     NCServerDataProcessor* = ref object of RootObj
@@ -43,7 +65,8 @@ method ncIsFinished*(self: var NCServerDataProcessor): bool {.base, gcsafe.} =
     quit("You must override this method: isFinished")
 
 method ncGetInitData*(self: var NCServerDataProcessor): seq[byte] {.base, gcsafe.} =
-    quit("You must override this method: getInitData")
+    discard
+    #quit("You must override this method: getInitData")
 
 method ncGetNewData*(self: var NCServerDataProcessor, id: NCNodeID): seq[byte] {.base, gcsafe.} =
     quit("You must override this method: getNewData")
@@ -58,6 +81,8 @@ method ncSaveData*(self: var NCServerDataProcessor) {.base, gcsafe.} =
     quit("You must override this method: saveData")
 
 proc ncAwaitLock() {.async.} =
+    ## Waits asynchronously for a lock to be ready.
+    ## Does not block the main thread.
     ncDebug("ncAwaitLock()", 2)
 
     while true:
@@ -68,6 +93,7 @@ proc ncAwaitLock() {.async.} =
             await sleepAsync(100)
 
 proc ncCreateNewNodeId(): NCNodeID =
+    ## Creates a new and unique node id.
     ncDebug("ncCreateNewNodeId()", 2)
 
     result = ncNewNodeId()
@@ -84,6 +110,8 @@ proc ncCreateNewNodeId(): NCNodeID =
     ncDebug(fmt("ncCreateNewNodeId(), id: {result}"))
 
 proc ncValidNodeId(id: NCNodeID): bool =
+    ## If the node has been registered return true,
+    ## otherwise false.
     ncDebug(fmt("ncValidNodeId(), id: {id}"), 2)
 
     result = false
@@ -94,6 +122,10 @@ proc ncValidNodeId(id: NCNodeID): bool =
             break
 
 proc ncCheckNodeHeartbeat() {.async.} =
+    ## Checks each registered node if the heartbeat messages
+    ## have been send in time.
+    ## If not the method "ncMaybeDeadNode()" is called with the
+    ## corresponding node id.
     ncDebug("ncCheckNodeHeartbeat()")
 
     await ncAwaitLock()
@@ -104,13 +136,14 @@ proc ncCheckNodeHeartbeat() {.async.} =
     for n in ncServerInstance.nodes:
         if maxDuration < (currentTime - n[1]):
             ncInfo(fmt("ncCheckNodeHeartbeat(), node is not sending heartbeat message: {n[0]}"))
-            # Let data processor know that this node seems dead
+            # Let data processor know that this node seems dead.
             ncDPInstance[].ncMaybeDeadNode(n[0])
 
     release(ncServerLock)
     ncDebug("ncCheckNodeHeartbeat(), done", 2)
 
 proc ncHandleClient(req: Request) {.async.} =
+    ## Each time a node sends a message to the server it is handled here.
     ncDebug("ncHandleClient()", 2)
 
     let path = req.url.path
@@ -130,7 +163,10 @@ proc ncHandleClient(req: Request) {.async.} =
         nodeMessage = NCNodeMessage(kind: NCNodeMsgKind.quit)
     else:
         case path:
+            # The path matching arms are sorted by most likely string on top.
             of "/heartbeat":
+                # Node has sent a heartbeat message so the time stamp gets
+                # updated for that node.
                 ncDebug(fmt("ncHandleClient(), node sends heartbeat: {message.id}"))
 
                 var valid = false
@@ -146,6 +182,7 @@ proc ncHandleClient(req: Request) {.async.} =
                 else:
                     ncError(fmt("ncHandleClient(), node id invalid: {message.id}"))
             of "/node_needs_data":
+                # Node needs some data, so call the data processor method "ncGetNewData()".
                 ncDebug(fmt("ncHandleClient(), node needs data: {message.id}"))
 
                 if ncValidNodeId(message.id):
@@ -154,6 +191,8 @@ proc ncHandleClient(req: Request) {.async.} =
                 else:
                     ncError(fmt("ncHandleClient(), node id invalid: {message.id}"))
             of "/processed_data":
+                # Node has processed the data it was given, so the data processor can
+                # collect it: "ncCollectData()".
                 ncDebug(fmt("ncHandleClient(), node has processed data: {message.id}"))
 
                 if ncValidNodeId(message.id):
@@ -162,6 +201,10 @@ proc ncHandleClient(req: Request) {.async.} =
                 else:
                     ncError(fmt("ncHandleClient(), node id invalid: {message.id}"))
             of "/register_new_node":
+                # The node has contacted the server for the first time.
+                # A new and unique node id is generated and send to the node.
+                # And maybe some initial data generated by the data processor
+                # with "ncGetInitData()" if needed.
                 let newId = ncCreateNewNodeId()
                 ncServerInstance.nodes.add((newId, getTime()))
 
@@ -183,6 +226,7 @@ proc ncHandleClient(req: Request) {.async.} =
     ncDebug("ncHandleClient(), done", 2)
 
 proc ncStartHttpServer(port: Port) {.async.} =
+    ## Starts the server. Is called from ncRunServer().
     ncInfo("ncStartHttpServer()")
     var server = newAsyncHttpServer()
     server.listen(port)
@@ -225,6 +269,7 @@ proc ncStartHttpServer(port: Port) {.async.} =
     server.close()
 
 proc ncRunServer*() =
+    ## Prepares the server and starts it. Main entry point.
     ncInfo("ncRunServer()")
 
     let startTime = getTime()
@@ -254,6 +299,8 @@ proc ncRunServer*() =
     ncInfo("ncRunServer(), will exit now")
 
 proc ncInitServer*(dataProcessor: NCServerDataProcessor, ncConfig: NCConfiguration) =
+    ## Initialize the server with the given data processor and
+    ## configuration.
     ncInfo("ncInitServer(config)")
 
     # Initiate the random number genertator
@@ -269,13 +316,14 @@ proc ncInitServer*(dataProcessor: NCServerDataProcessor, ncConfig: NCConfigurati
 
     ncServerInstance.key = key[]
     ncServerInstance.heartbeatTimeout = ncConfig.heartbeatTimeout
-    #ncServer.nodes = newSeqOfCap[(NCNodeID, Time)](10)
     ncServerInstance.nodes = @[]
 
     ncDPInstance = createShared(NCServerDataProcessor)
     moveMem(ncDPInstance, dataProcessor.addr, sizeof(NCServerDataProcessor))
 
 proc ncInitServer*(dataProcessor: NCServerDataProcessor, fileName: string) =
+    ## Initialize the server with the given data processor and
+    ## configuration file.
     ncInfo(fmt("ncInitServer({fileName})"))
 
     let config = ncLoadConfig(fileName)
