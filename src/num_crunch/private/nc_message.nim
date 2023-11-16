@@ -1,3 +1,12 @@
+## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
+## Written by Willi Kappler, License: MIT
+##
+## This is a private module that implements the communication between
+## the server and the nodes.
+## The implementation details are hidden since the underlying methods
+## may change in the future and the user of this library should not care
+## about it.
+##
 
 # Nim std imports
 import std/httpclient
