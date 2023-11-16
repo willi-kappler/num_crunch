@@ -1,21 +1,27 @@
 ## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
+##
 ## Written by Willi Kappler, License: MIT
 ##
 ## The main server data structure NCServer is defined here, togehter with the
 ## user defined methods:
 ##
-## "ncIsFinished()": Determines if the job is done. Will be called every time a node
+## ncIsFinished_: Determines if the job is done. Will be called every time a node
 ##   sends a message to the server. Has to be implemented.
-## "ncGetInitData()": Returns the initial data for the node when it contacts the server
+##
+## ncGetInitData_: Returns the initial data for the node when it contacts the server
 ##   for the first time. May be implemented if needed.
-## "ncGetNewData()": Returns new data for the node (given by the node id) to process.
+##
+## ncGetNewData_: Returns new data for the node (given by the node id) to process.
 ##   Has to be implemented.
-## "ncCollectData()": Receives data from the node that has to be collected / merged.
+##
+## ncCollectData_: Receives data from the node that has to be collected / merged.
 ##    Has to be implemented.
-## "ncMaybeDeadNode()": If a node doesn't send any heartbeat messages anymore then
+##
+## ncMaybeDeadNode_: If a node doesn't send any heartbeat messages anymore then
 ##   this method is called so that the server knows that the data may be lost
 ##   and can be given to another node to process. Has to be implemented.
-## "ncSaveData()": If the jov is done the server saves the data to disk.
+##
+## ncSaveData_: If the jov is done the server saves the data to disk.
 ##   Has to be implemented.
 ##
 ## These methods are defined for the NCServerDataProcessor data structure that
@@ -54,6 +60,7 @@ type
         nodes: seq[(NCNodeID, Time)]
 
     NCServerDataProcessor* = ref object of RootObj
+        ## The user has to inherit from this data structure and implement the methods below.
 
 var ncServerInstance: ptr NCServer
 
@@ -62,22 +69,41 @@ var ncDPInstance: ptr NCServerDataProcessor
 var ncServerLock: Lock
 
 method ncIsFinished*(self: var NCServerDataProcessor): bool {.base, gcsafe.} =
+    ## Checks whether the whole compute job is done and returns true in that case.
+    ## This will be called everytime a nodes sends a message to the server.
+    ## If there is no more data to process, the server sends a message to the node
+    ## that the job is done and the node exits.
     quit("You must override this method: isFinished")
 
 method ncGetInitData*(self: var NCServerDataProcessor): seq[byte] {.base, gcsafe.} =
+    ## Prepares the initial data for a node that connects for the first time and sends
+    ## it to the node. Only implement this if needed.
+    ## This will only be called once.
     discard
     #quit("You must override this method: getInitData")
 
 method ncGetNewData*(self: var NCServerDataProcessor, id: NCNodeID): seq[byte] {.base, gcsafe.} =
+    ## Returns new data for the node to process.
+    ## This will be called everytime a node sends a "I need more data" message to the server.
     quit("You must override this method: getNewData")
 
 method ncCollectData*(self: var NCServerDataProcessor, id: NCNodeID, data: seq[byte]) {.base, gcsafe.} =
+    ## Collects the processed data from the node and stores it internally.
+    ## This will be called everytime the node sends a "I'm done here is the result" message
+    ## to the server.
     quit("You must override this method: collectData")
 
 method ncMaybeDeadNode*(self: var NCServerDataProcessor, id: NCNodeID) {.base, gcsafe.} =
+    ## If a node doesn't send a heartbeat message the server assumes that the node may
+    ## be dead and give the data to another node to process.
+    ## This will only be called when the node has missed the hearbet timeout, that is
+    ## when it doesn't send a heartbeat message in time.
     quit("You must override this method: maybeDeadNode")
 
 method ncSaveData*(self: var NCServerDataProcessor) {.base, gcsafe.} =
+    ## After everything is done (that is if ncIsFinished_ returns true) all the collected
+    ## data is saved onto disk and the server exits.
+    ## This will only be called at the end when the job is done.
     quit("You must override this method: saveData")
 
 proc ncAwaitLock() {.async.} =

@@ -1,4 +1,5 @@
 ## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
+##
 ## Written by Willi Kappler, License: MIT
 ##
 ## This module contains the configuration type and two helper functions
@@ -11,12 +12,16 @@ from std/nativesockets import Port
 
 type
     NCConfiguration* = object
-        ## NumCrunch configuration
+        ## NumCrunch configuration, for the server and the nodes.
         serverAddr*: string
+            ## The address of the server.
         serverPort*: Port
-        # In seconds:
+            ## The port to connect to.
         heartbeatTimeout*: uint16
+            ## Given in seconds. If the heartbeat is not send, the server
+            ## assumes that the node may be dead and gives the data to another node.
         secretKey*: string
+            ## The secret key that is used for encrypted communication.
 
 func ncNewConfig*(key: string): NCConfiguration =
     ## Creates a new configuration with default values given the encryption key.

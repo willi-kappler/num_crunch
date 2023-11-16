@@ -1,4 +1,5 @@
 ## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
+##
 ## Written by Willi Kappler, License: MIT
 ##
 ## This is a private module that implements the communication between

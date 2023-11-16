@@ -1,3 +1,7 @@
+## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
+##
+## Written by Willi Kappler, License: MIT
+##
 
 
 # TODO: Implement Array 3D

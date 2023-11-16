@@ -1,4 +1,5 @@
 ## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
+##
 ## Written by Willi Kappler, License: MIT
 ##
 ## NCArray2D is a generic container for two dimensional data of type T.
@@ -33,14 +34,14 @@ type
 
     NCArray2D*[T] = object
         ## The 2D array object containing the data and the information about each tile.
-        data: seq[T]
-        tileSizeX: uint32
-        tileSizeY: uint32
-        numTilesX: uint32
-        numTilesY: uint32
-        totalSizeX: uint32
-        totalSizeY: uint32
-        tileStatus: seq[NCTileStatus]
+        data: seq[T] # The actual data.
+        tileSizeX: uint32 # Size of a tile in x direction.
+        tileSizeY: uint32 # Size of a tile in y direction.
+        numTilesX: uint32 # Number of tiles in x direction.
+        numTilesY: uint32 # Number of tiles in y direction.
+        totalSizeX: uint32 # Total size in x direction.
+        totalSizeY: uint32 # Total size in y direction.
+        tileStatus: seq[NCTileStatus] # Status of a specific tile, is it processed, etc. ?
 
 proc ncNewArray2D*[T](sizeX: uint32, sizeY: uint32, tileX: uint32, tileY: uint32): NCArray2D[T] =
     ## Creates a new 2D array given the properties.

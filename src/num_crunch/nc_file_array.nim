@@ -1,4 +1,5 @@
 ## This module is part of num_crunch: https://github.com/willi-kappler/num_crunch
+##
 ## Written by Willi Kappler, License: MIT
 ##
 ## NCFileArray is a data structure that holds multiple paths to files that need to be processed
