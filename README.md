@@ -17,91 +17,91 @@ Have a look at the Mandelbrot example to see how it works.
 ## How to use it
 You have to provide two data structures and implement some method for them.
 
-1. For the compute node: NCNodeDataProcessor. Implement your own data structure based on this one:
+1. For the compute node: **NCNodeDataProcessor.** Implement your own data structure based on this one:
 
-```nim
-import num_crunch
+    ```nim
+    import num_crunch
 
-type MyStructNode ref object of NCNodeDataProcessor
-    data: int32
+    type MyStructNode ref object of NCNodeDataProcessor
+        data: int32
 
-method ncInit(self: var MyStructNode, data: seq[byte]) =
-    # This method is optionaly and only has to be implemented
-    # if needed. It will be called exactly once when the node
-    # connects to the server for the first time.
+    method ncInit(self: var MyStructNode, data: seq[byte]) =
+        # This method is optionaly and only has to be implemented
+        # if needed. It will be called exactly once when the node
+        # connects to the server for the first time.
 
-    # Convert the data given by the server to the data type we need:
-    let initData = ncFromBytes(data, int32)
+        # Convert the data given by the server to the data type we need:
+        let initData = ncFromBytes(data, int32)
 
-    # Assign the data to our struct:
-    self.data = initData
- 
-method ncProcessData(self: var MyStructNode, inputData: seq[byte]): seq[byte] =
-    # This method has to be implemented.
-    # It will be called everytime the node connects to the server and asks for
-    # new data to be processed by the node.
+        # Assign the data to our struct:
+        self.data = initData
+    
+    method ncProcessData(self: var MyStructNode, inputData: seq[byte]): seq[byte] =
+        # This method has to be implemented.
+        # It will be called everytime the node connects to the server and asks for
+        # new data to be processed by the node.
 
-    # Convert the input data given by the server to the data type we need:
-    let data = ncFromBytes(inputData, float64)
+        # Convert the input data given by the server to the data type we need:
+        let data = ncFromBytes(inputData, float64)
 
-    # Do some heavy calculations:
-    let value = float64(self.data) * data
+        # Do some heavy calculations:
+        let value = float64(self.data) * data
 
-    # Convert it back to a stream of bytes for the server:
-    let bytes = ncToBytes(value)
+        # Convert it back to a stream of bytes for the server:
+        let bytes = ncToBytes(value)
 
-    # And just return it:
-    return bytes
-```
+        # And just return it:
+        return bytes
+    ```
 
-2. For the server: NCServerDataProcessor: Implement your own data structure based on this one:
+2. For the server: **NCServerDataProcessor.** Implement your own data structure based on this one:
 
-```nim
-import num_crunch
+    ```nim
+    import num_crunch
 
-type MyStructServer ref object of NCServerDataProcessor
-    data: float64
+    type MyStructServer ref object of NCServerDataProcessor
+        data: float64
 
-method ncIsFinished(self: var MyStructServer): bool =
-    # This method has to be implemented and tells the server when the
-    # compute job is done.
-    return self.data > 10
+    method ncIsFinished(self: var MyStructServer): bool =
+        # This method has to be implemented and tells the server when the
+        # compute job is done.
+        return self.data > 10
 
-method ncGetInitData(self: var MyStructServer): seq[byte] =
-    # This method is optionally and just returns the initial data for the node.
-    # It is called exactly once when the node connects to the server 
-    # for the first time.
-    return ncToBytes(2.0)
+    method ncGetInitData(self: var MyStructServer): seq[byte] =
+        # This method is optionally and just returns the initial data for the node.
+        # It is called exactly once when the node connects to the server 
+        # for the first time.
+        return ncToBytes(2.0)
 
-method ncGetNewData(self: var MyStructServer, n: NCNodeID): seq[byte] =
-    # This method has to be implemented and returns the new data
-    # that needs to be processed by the given node (node id).
-    # The node id should be stored so that when collecting the data
-    # the server knows which node has processed which piece of data.
-    # It is called everytime the node requests new data to be processed.
-    return ncToBytes(3.5)
+    method ncGetNewData(self: var MyStructServer, n: NCNodeID): seq[byte] =
+        # This method has to be implemented and returns the new data
+        # that needs to be processed by the given node (node id).
+        # The node id should be stored so that when collecting the data
+        # the server knows which node has processed which piece of data.
+        # It is called everytime the node requests new data to be processed.
+        return ncToBytes(3.5)
 
-method ncCollectData(self: var MyStructServer, n: NCNodeID, data: seq[byte]) =
-    # This method has to be implemented and collects the processed data
-    # from the given node (ndoe id).
-    # It is called every time the node has processed the data and sends it back 
-    # to the server.
-    self.data = ncFromBytes(data, float64)
+    method ncCollectData(self: var MyStructServer, n: NCNodeID, data: seq[byte]) =
+        # This method has to be implemented and collects the processed data
+        # from the given node (ndoe id).
+        # It is called every time the node has processed the data and sends it back 
+        # to the server.
+        self.data = ncFromBytes(data, float64)
 
-method ncMaybeDeadNode(self: var MyStructServer, n: NCNodeID) =
-    # This method has to be implemented and manages a list of registered nodes.
-    # If a node misses a heartbeat message this method will be called.
-    # The piece of data that the node should have been processed has to be
-    # marked as "dirty" or "unprocessed" and should be given to another node.
-    discard
+    method ncMaybeDeadNode(self: var MyStructServer, n: NCNodeID) =
+        # This method has to be implemented and manages a list of registered nodes.
+        # If a node misses a heartbeat message this method will be called.
+        # The piece of data that the node should have been processed has to be
+        # marked as "dirty" or "unprocessed" and should be given to another node.
+        discard
 
-method ncSaveData(self: var MyStructServer) =
-    # This method has to be implemented. It will be called when the job is done.
-    # Thas is when the method "ncIsFinished()" returns true.
-    # It has to save the data onto disk or into a database or somewhere else.
-    discard
+    method ncSaveData(self: var MyStructServer) =
+        # This method has to be implemented. It will be called when the job is done.
+        # Thas is when the method "ncIsFinished()" returns true.
+        # It has to save the data onto disk or into a database or somewhere else.
+        discard
 
-```
+    ```
 
 There is more work to do for the server side, but the idea is that these methods will be just delegated
 (or passed on) to another method of a "smart" data structure that knows how to handle it.
@@ -112,7 +112,7 @@ See the Mandelbrot example on how this works in detail.
 
 ## FAQ
 - Why is it called num_crunch ?
-    It stands for "*num*ber *crunch*ing"
+    It stands for "**num**ber **crunch**ing"
     It's also a wordplay: nim -> num
 
 - Can it run on a cluster (HPC) ?
