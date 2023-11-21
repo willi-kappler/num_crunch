@@ -112,7 +112,7 @@ See the Mandelbrot example on how this works in detail.
 
 ## FAQ
 - Why is it called num_crunch ?
-    It stands for "**num**ber **crunch**ing"
+    It stands for "**num**ber **crunch**ing".
     It's also a wordplay: nim -> num
 
 - Can it run on a cluster (HPC) ?
@@ -124,6 +124,10 @@ See the Mandelbrot example on how this works in detail.
     running and if one node crahes the whole program crashes.
     With num_crunch you can add more nodes while your program is running and one node can't crash
     your whole program.
+
+- Why does the server not stop directly after the job is done ?
+    The server just waits some more time since there may be some nodes that still try to connect.
+    Those nodes will just receive the "job is done" message.
 
 ## License
 This library is licensed under the MIT license.

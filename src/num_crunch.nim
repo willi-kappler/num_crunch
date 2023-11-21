@@ -23,9 +23,11 @@
 ## There are two corresponding data structures that the user has to inherti from and 
 ## implement the methods:
 ##
-## 1. NCServerDataProcessor_: this prepares the data, collects the data, initializes the nodes, etc.
+## .. importdoc:: num_crunch/nc_node.nim, num_crunch/nc_server.nim
 ##
-## 2. NCNodeDataProcessor_: this initializes the node with the given data from the server and 
+## 1. [NCServerDataProcessor]: this prepares the data, collects the data, initializes the nodes, etc.
+##
+## 2. [NCNodeDataProcessor]: this initializes the node with the given data from the server and 
 ##    processes the given data from the server and returns the processed data back to the server.
 ##
 

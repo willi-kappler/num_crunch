@@ -8,7 +8,7 @@
 ## The user has to implement this method: ncProcessData_.
 ## The other method ncInit_ may be implemented if needed.
 ##
-## These two methods are defined for the NCNodeDataProcessor data structure
+## These two methods are defined for the NCNodeDataProcessor_ data structure
 ## that the user has to inherit from / implement.
 ##
 

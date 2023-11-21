@@ -24,7 +24,7 @@
 ## ncSaveData_: If the jov is done the server saves the data to disk.
 ##   Has to be implemented.
 ##
-## These methods are defined for the NCServerDataProcessor data structure that
+## These methods are defined for the NCServerDataProcessor_ data structure that
 ## the user has to inherit from / implement.
 ##
 
