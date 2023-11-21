@@ -6,11 +6,7 @@ import std/complex
 from std/strformat import fmt
 
 # Local imports
-#import num_crunch/nc_common
-
-import ../../src/num_crunch/nc_node
-import ../../src/num_crunch/nc_common
-import ../../src/num_crunch/nc_log
+import ../../src/num_crunch
 
 import m_common
 

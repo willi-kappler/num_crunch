@@ -29,13 +29,18 @@
 ##    processes the given data from the server and returns the processed data back to the server.
 ##
 
-import num_crunch/nc_array2d
 import num_crunch/nc_common
 import num_crunch/nc_config
-import num_crunch/nc_file_array
 import num_crunch/nc_log
 import num_crunch/nc_node
 import num_crunch/nc_nodeid
 import num_crunch/nc_server
+
+export nc_common
+export nc_config
+export nc_log
+export nc_node
+export nc_nodeid
+export nc_server
 
 

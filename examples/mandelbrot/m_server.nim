@@ -7,14 +7,8 @@ from std/strformat import fmt
 
 
 # Local imports
-#import num_crunch/nc_nodeid
-#import num_crunch/nc_array2d
-#import num_crunch/nc_common
-
-import ../../src/num_crunch/nc_server
-import ../../src/num_crunch/nc_nodeid
+import ../../src/num_crunch
 import ../../src/num_crunch/nc_array2d
-import ../../src/num_crunch/nc_common
 
 import m_common
 
