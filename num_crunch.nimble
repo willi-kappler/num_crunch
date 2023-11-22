@@ -43,7 +43,7 @@ task cleanTests, "Clean log files and binaries in tests/ folder":
     exec "find . -type f -perm /u=x -delete"
 
 task runMandel, "Runs the mandelbrot example":
-    cd "examples/mandelbrot/"
+    cd "examples/mandelbrot1/"
     exec "nimble runMandel"
 
 task genDoc, "Generate documentation":
