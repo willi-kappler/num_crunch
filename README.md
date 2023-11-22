@@ -116,14 +116,15 @@ See the Mandelbrot example on how this works in detail.
     It's also a wordplay: nim -> num
 
 - Can it run on a cluster (HPC) ?
-    Yes there is an example batch script for SLURM (sbatch) and Torq / Moab (qsub).
+    Yes there is an example batch script for [SLURM](https://slurm.schedmd.com/) (sbatch) and [Torq / Moab / PBS](https://adaptivecomputing.com/cherry-services/torque-resource-manager/) (qsub) in the mandelbrot2 folder.
 
-- How does it compare to MPI (OpenMPI) ?
+- How does it compare to MPI ([OpenMPI](https://www.open-mpi.org/)) ?
     MPI (message passing interface) is super optimized and has support for C, C++ and Fortran.
-    It's faster than num_crunch but less flexible. You can't add more nodes while the program is
-    running and if one node crahes the whole program crashes.
+    It's faster than num_crunch and has a lot more features but is less flexible.
+    You can't add more nodes while the program is running and if one node crashes the whole program crashes.
     With num_crunch you can add more nodes while your program is running and one node can't crash
-    your whole program.
+    your whole program. You can also easily mix different operating systems (Windows, Linux, MacOS)
+    with num_crunch.
 
 - Why does the server not stop directly after the job is done ?
     The server just waits some more time since there may be some nodes that still try to connect.
