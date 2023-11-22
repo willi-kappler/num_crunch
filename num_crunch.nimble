@@ -35,7 +35,7 @@ task checkAll, "run 'nim check' on all source files":
     # Check private modules:
     exec "nim check nc_message.nim"
 
-task cleanTests, "Clean log files in binaries in tests folder":
+task cleanTests, "Clean log files and binaries in tests/ folder":
     cd "tests/"
     # Delete all log files
     exec "rm -f *.log"
