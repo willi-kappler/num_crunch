@@ -1,5 +1,9 @@
 # num_crunch
+[![MIT licensed](https://img.shields.io/github/license/willi-kappler/num_crunch)](./LICENSE)
+
 Distributed number crunching with [Nim](https://nim-lang.org/ "The Nim programming language").
+
+(Keywords: numeric computing, scientific computing, HPC)
 
 The num_crunch library allows you to write distributed number crunching programs easily.
 
