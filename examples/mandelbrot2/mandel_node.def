@@ -1,0 +1,36 @@
+Bootstrap: docker
+From: alpine:3.14.6
+Stage: devel
+
+%post
+    apk upgrade
+
+    # Install compilers
+    apk add gcc
+
+    # Install build tools
+    apk add git bash make
+
+    # Donwload and compile the mandel example
+    cd /root/
+    git clone --depth 1 --branch "main" "https://github.com/willi-kappler/num_crunch"
+    cd num_crunch/examples/mandelbrot1/
+    nim c -d:release mandel.nim
+    cp mandel /root/mandel
+
+    # Clean up
+    cd
+    rm -rf /root/num_crunch
+
+    cat /etc/os-release
+
+%labels
+    Author "Willi Kappler"
+    Version v0.1
+
+%help
+    This file defines a singularity container to run the mandelbot example
+    on a cluster (HPC).
+    To build it use this command:
+        sudo singularity build mandel_node.sif mandel_node.def
+
