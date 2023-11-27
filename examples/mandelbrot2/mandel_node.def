@@ -1,26 +1,30 @@
 Bootstrap: docker
-From: alpine:3.14.6
+From: alpine:3.18.4
 Stage: devel
 
 %post
     apk upgrade
 
-    # Install compilers
-    apk add gcc
+    # Install compilers and build tools
+    apk add gcc bash make wget tar xz gzip
 
-    # Install build tools
-    apk add git bash make
+    # Download and install pre-built Nim binaries:
+    cd /root/
+    wget https://nim-lang.org/download/nim-2.0.0-linux_x64.tar.xz
+    tar xfvJ nim-2.0.0-linux_x64.tar.xz
+    PATH=/root/nim-2.0.0/bin/:$PATH
 
     # Donwload and compile the mandel example
-    cd /root/
-    git clone --depth 1 --branch "main" "https://github.com/willi-kappler/num_crunch"
-    cd num_crunch/examples/mandelbrot1/
-    nim c -d:release mandel.nim
-    cp mandel /root/mandel
+    wget https://github.com/willi-kappler/num_crunch/archive/refs/tags/container_v0.1.tar.gz
+    tar xfvz container_v0.1.tar.gz
+    cd num_crunch-container_v0.1/examples/mandelbrot1/
+    nim c -d:release --lib:/root/nim-2.0.0/lib/ mandel.nim
+    cp mandel /bin/mandel
 
     # Clean up
     cd
-    rm -rf /root/num_crunch
+    rm -rf /root/nim-2.0.0/
+    rm -rf /root/num_crunch-container_v0.1/
 
     cat /etc/os-release
 
@@ -33,4 +37,7 @@ Stage: devel
     on a cluster (HPC).
     To build it use this command:
         sudo singularity build mandel_node.sif mandel_node.def
+
+%runscript
+    /bin/mandel
 
