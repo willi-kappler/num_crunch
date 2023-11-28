@@ -6,7 +6,7 @@ Stage: devel
     apk upgrade
 
     # Install compilers and build tools
-    apk add gcc bash make wget tar xz gzip
+    apk add gcc bash make wget tar xz gzip git libc-dev
 
     # Download and install pre-built Nim binaries:
     cd /root/
@@ -18,6 +18,10 @@ Stage: devel
     wget https://github.com/willi-kappler/num_crunch/archive/refs/tags/container_v0.1.tar.gz
     tar xfvz container_v0.1.tar.gz
     cd num_crunch-container_v0.1/examples/mandelbrot1/
+    nimble refresh
+    nimble install supersnappy
+    nimble install flatty
+    nimble install chacha20
     nim c -d:release --lib:/root/nim-2.0.0/lib/ mandel.nim
     cp mandel /bin/mandel
 
