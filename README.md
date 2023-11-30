@@ -119,6 +119,11 @@ See the Mandelbrot example on how this works in detail.
     It stands for "**num**ber **crunch**ing".
     It's also a wordplay: nim -> num
 
+- When should I use it ?
+    The network is the bottleneck, so you should keep the nodes busy.
+    That is each node should have enough data to process for at least 10 minutes.
+    Try to keep the network traffic low (= transmit small amounts of data).
+
 - Can it run on a cluster (HPC) ?
     Yes there is an example batch script for [SLURM](https://slurm.schedmd.com/) (sbatch) and [Torq / Moab / PBS](https://adaptivecomputing.com/cherry-services/torque-resource-manager/) (qsub) in the mandelbrot2 folder.
 
