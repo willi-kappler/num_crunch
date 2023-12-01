@@ -1,7 +1,7 @@
 # Package
 version       = "0.1.0"
 author        = "Willi Kappler"
-description   = "Distributed number crunching with nim"
+description   = "Distributed number crunching with Nim"
 license       = "MIT"
 srcDir        = "src"
 

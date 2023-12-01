@@ -85,26 +85,26 @@ method ncGetInitData*(self: var NCServerDataProcessor): seq[byte] {.base, gcsafe
 method ncGetNewData*(self: var NCServerDataProcessor, id: NCNodeID): seq[byte] {.base, gcsafe.} =
     ## Returns new data for the node to process.
     ## This will be called everytime a node sends a "I need more data" message to the server.
-    quit("You must override this method: getNewData")
+    quit("You must override this method: ncGetNewData")
 
 method ncCollectData*(self: var NCServerDataProcessor, id: NCNodeID, data: seq[byte]) {.base, gcsafe.} =
     ## Collects the processed data from the node and stores it internally.
     ## This will be called everytime the node sends a "I'm done here is the result" message
     ## to the server.
-    quit("You must override this method: collectData")
+    quit("You must override this method: ncCollectData")
 
 method ncMaybeDeadNode*(self: var NCServerDataProcessor, id: NCNodeID) {.base, gcsafe.} =
     ## If a node doesn't send a heartbeat message the server assumes that the node may
     ## be dead and give the data to another node to process.
     ## This will only be called when the node has missed the hearbet timeout, that is
     ## when it doesn't send a heartbeat message in time.
-    quit("You must override this method: maybeDeadNode")
+    quit("You must override this method: ncMaybeDeadNode")
 
 method ncSaveData*(self: var NCServerDataProcessor) {.base, gcsafe.} =
     ## After everything is done (that is if ncIsFinished_ returns true) all the collected
     ## data is saved onto disk and the server exits.
     ## This will only be called at the end when the job is done.
-    quit("You must override this method: saveData")
+    quit("You must override this method: ncSaveData")
 
 proc ncAwaitLock() {.async.} =
     ## Waits asynchronously for a lock to be ready.

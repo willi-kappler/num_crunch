@@ -4,10 +4,10 @@ TODO:
 - Make heartbeat tolerance configurable
 - Add more test cases
 - Add more examples
+- Add more documentation
 - In NCServer.handleClient(): Use lock only when needed
 - Finish Array3D
 - Finish FileArray
-- Add exports to num_crunch.nim
 
 
 Done:
@@ -17,6 +17,7 @@ Done:
 # Array2D: next unprocessed tile: return option
 # Use PPM, (Write png image file for mandel example, use https://github.com/jangko/nimPNG)
 # Add documentation
+# Add exports to num_crunch.nim
 
 
 

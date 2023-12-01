@@ -59,7 +59,7 @@ method ncProcessData*(self: var NCNodeDataProcessor, data: seq[byte]): seq[byte]
     ## that will be sent back to the server.
     ## This is called everytime the nodes sends a "I need more data" message to the server and
     ## the server responds with a data message.
-    quit("You must override this method: processData")
+    quit("You must override this method: ncProcessData")
 
 proc ncSendHeartbeat() {.thread.} =
     ## This is the heartbeat thread that sends a heartbeat to the server so
