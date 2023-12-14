@@ -127,6 +127,10 @@ See the Mandelbrot example on how this works in detail.
 - Can it run on a cluster (HPC) ?
     Yes there is an example batch script for [SLURM](https://slurm.schedmd.com/) (sbatch) and [Torq / Moab / PBS](https://adaptivecomputing.com/cherry-services/torque-resource-manager/) (qsub) in the mandelbrot2 folder.
 
+- Do I need a cluster ?
+    No you can also run it locally on your machine.
+    Just have a look at the mandelbrot1 example.
+
 - How does it compare to MPI ([OpenMPI](https://www.open-mpi.org/)) ?
     MPI (message passing interface) is super optimized and has support for C, C++ and Fortran.
     It's faster than num_crunch and has a lot more features but is less flexible.
