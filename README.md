@@ -20,6 +20,13 @@ The library is written in the powerful [Nim](https://nim-lang.org/ "The Nim prog
 
 Have a look at the Mandelbrot example to see how it works.
 
+You can run the example with this command: `nimble runMandel`.
+
+## Installation
+`nimble install num_crunch`
+
+`atlas use num_crunch`
+
 ## How to use it
 You have to provide two data structures and implement some method for them.
 
@@ -111,7 +118,7 @@ You have to provide two data structures and implement some method for them.
 
 There is more work to do for the server side, but the idea is that these methods will be just delegated
 (or passed on) to another method of a "smart" data structure that knows how to handle it.
-Currently num_crunch provides two such "smart" data structure: NCArray2D and NCFileArray.
+Currently num_crunch provides two such "smart" data structure: `NCArray2D` and `NCFileArray`.
 More data structures will be added in future versions of this library.
 See the Mandelbrot example on how this works in detail.
 
@@ -127,7 +134,11 @@ See the Mandelbrot example on how this works in detail.
     Try to keep the network traffic low (= transmit small amounts of data).
 
 - Can it run on a cluster (HPC) ?
-    Yes there is an example batch script for [SLURM](https://slurm.schedmd.com/) (sbatch) and [Torq / Moab / PBS](https://adaptivecomputing.com/cherry-services/torque-resource-manager/) (qsub) in the mandelbrot2 folder.
+    Yes there is an example batch script for [SLURM](https://slurm.schedmd.com/) (`sbatch`) and [Torq / Moab / PBS](https://adaptivecomputing.com/cherry-services/torque-resource-manager/) (`qsub`) in the mandelbrot2 folder.
+
+- Do I need a cluster ?
+    No you can also run it locally on your machine.
+    Just have a look at the mandelbrot1 example.
 
 - How does it compare to MPI ([OpenMPI](https://www.open-mpi.org/)) ?
     MPI (message passing interface) is super optimized and has support for C, C++ and Fortran.
