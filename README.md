@@ -5,6 +5,8 @@ Distributed number crunching with [Nim](https://nim-lang.org/ "The Nim programmi
 
 (Keywords: numeric computing, scientific computing, HPC)
 
+Version: 0.2 (2024.01.xx)
+
 The num_crunch library allows you to write distributed number crunching programs easily.
 
 It takes care of the communication between the server and the individual compute processes (called nodes), so you don't have to worry about it.
