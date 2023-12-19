@@ -79,8 +79,7 @@ method ncGetInitData*(self: var NCServerDataProcessor): seq[byte] {.base, gcsafe
     ## Prepares the initial data for a node that connects for the first time and sends
     ## it to the node. Only implement this if needed.
     ## This will only be called once.
-    discard
-    #quit("You must override this method: getInitData")
+    @[]
 
 method ncGetNewData*(self: var NCServerDataProcessor, id: NCNodeID): seq[byte] {.base, gcsafe.} =
     ## Returns new data for the node to process.
